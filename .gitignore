@@ -1,0 +1,8 @@
+# Ignore Mac system files
+.DS_store
+
+# Ignore all .o file
+*.o
+
+# Ignore executable file
+nyush
