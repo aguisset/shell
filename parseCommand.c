@@ -22,12 +22,42 @@ int is_built_in(command *command){
 
 	return 0;
 }
+char* get_base_dir(){
+	
+	char buff[MAX_PATH_LENGTH];
+	char delimiter[] = "/"; // delimiters to use
+	char *token = NULL;
 
+	char *base_dir = (char*) malloc(sizeof(char) * MAX_PATH_LENGTH);
+	
+	memset(base_dir, ' ', MAX_PATH_LENGTH);
+	memset(buff, ' ', MAX_PATH_LENGTH);
+	
+	//printf("buff values: %c\n", buff[0]);
+	getcwd(buff, MAX_PATH_LENGTH);
+
+	char* prev = NULL;
+	token = strtok(buff, delimiter);
+	while(token != NULL){
+		prev = strdup(token);
+		token = strtok(NULL, delimiter);
+	}
+
+	if(prev == NULL)
+		strcpy(base_dir, token);
+	else
+		strcpy(base_dir, prev);
+	
+	return base_dir;
+}
 
 char *get_line_from_stdin(){
-	printf("[lab2 dir] >");
+	/*
+		This function returns the line from stdin
+	*/
 	char buffer[BUFFER_SIZE];
 	char *line = (char*) malloc(sizeof(char) * BUFFER_SIZE);
+	memset(buffer, ' ', BUFFER_SIZE);
 	if(line == NULL){
 		fprintf(stderr, "There was an issue when allocating in get_line_from_stdin()\n");
 		exit(1);
@@ -38,7 +68,7 @@ char *get_line_from_stdin(){
 		//line = buffer;
 	}
 	else{
-		fprintf(stderr, "There was an issue reading the line\n");
+		fprintf(stderr, "There was an issue reading the line in get_line_from_stdin()\n");
 		exit(1);
 	}
 

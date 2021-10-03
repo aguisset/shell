@@ -1,15 +1,10 @@
 #ifndef __GUARD_STRUCTS__
 #define __GUARD_STRUCTS__
 
-#include<stdlib.h>
-#include<stdio.h>
-#include<string.h>
-
-
 #define BUFFER_SIZE 1000
 #define STDIN stdin
 #define ARGUMENTS 1000
-
+#define MAX_PATH_LENGTH 1000
 // Structure that contains the parsed command
 typedef struct command{ 
 	int argc; // number of argument including that command
@@ -25,10 +20,14 @@ typedef struct commandList{
 
 #endif
 
+#include<stdlib.h>
+#include<stdio.h>
+#include<string.h>
+#include<unistd.h>
 
 
 
-
+char* get_base_dir();
 
 int is_built_in(command *command);
 char *get_line_from_stdin();
