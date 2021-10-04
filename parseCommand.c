@@ -139,8 +139,10 @@ int get_command_count(char* line){
 commandList* read_command(char* line){
 	/* Will call appropriate helper function depending on pipe's count */
 	int command_count = get_command_count(line);
+
 	commandList* commandList = calloc(sizeof(commandList) + command_count * sizeof(command*), sizeof(commandList));
 	if(get_pipes_count(line) == 0){
+		
 		command*command = read_command_with_no_pipes(line);
 		commandList->command_count = 1; // we count blank command as one as well!
 		commandList->command_list[0] = command;
@@ -167,19 +169,22 @@ command* read_command_with_no_pipes(char* line){
 	//int token_count = command_count();
 
 	token = strtok(line, delimiter);
+
 	if(token == NULL){
 		fprintf(stderr, "Error: No space to split in read_command_with_no_pipes()");
 		exit(1);
 	}
-	command->cmd = strdup(token); // first part of split corresponds to the actual command
+	
+	command->cmd = token; // first part of split corresponds to the actual command
 	
 	// getting arguments of command
 	while(token != NULL){
 		count++;
-		command->argv[current_token_index] = strdup(token); 
+		command->argv[current_token_index] = token; 
 		token = strtok(NULL, delimiter);
 		current_token_index++;
 	}
+
 	command->argv[current_token_index] = token; // set last arguments to NULL for convenience
 	command->argc = count;
 
@@ -253,21 +258,29 @@ void testHasPipe(){
 }
 */
 void testStruct(){
-	command*command;
-	command = malloc(sizeof(command));
-	command->argc = 1;
-	//char * str1 = "a";
-	//char * str2 = "b";
-	command->argv[0] = "str2";
-	command->argv[1] = "str1";
-	command->cmd = "exit";
+	
+	//commandList* commandList;
+	commandList* commandList2;
+	//char line[] = "ls -a\n"; // STRTOK MODIFIES THE STRING SO USE char arr[] instead
+	char line2[] = "cat something | cat somethingAgain\n";
+	//commandList = read_command(line);
+	commandList2 = read_command(line2);
+	/*
+	printf("%d\n", commandList->command_count);
+	printf("%s\n", commandList->command_list[0]->cmd);
+	printf("%d\n", commandList->command_list[0]->argc);
+	printf("%s\n", commandList->command_list[0]->argv[0]);
+	printf("%s\n", commandList->command_list[0]->argv[1]);
+	*/
 
-	printf("%s\n", command->cmd);
-	printf("%s\n", command->argv[0]);
-	printf("%s\n", command->argv[1]);
+	printf("%d\n", commandList2->command_count);
 
-	if(is_built_in(command)) printf("It's a built in command\n");
-	else printf("Not a built in command\n");
+	printf("%s\n", commandList2->command_list[1]->cmd);
+	printf("%d\n", commandList2->command_list[1]->argc);
+	printf("%s\n", commandList2->command_list[1]->argv[0]);
+	printf("%s\n", commandList2->command_list[1]->argv[1]);
+	
+	//printf("%s\n", commandList->command_list[0]->cmd);
 	return;
 }
 

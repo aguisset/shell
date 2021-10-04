@@ -23,8 +23,8 @@ int main(int argc, char ** argv){
 	//test_built_in();
 	//test_my_system();
 	
-	
-	init_shell();
+	testStruct();
+	//init_shell();
 	return 0;
 }
 
