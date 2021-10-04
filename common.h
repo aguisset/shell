@@ -16,7 +16,7 @@ typedef struct command{
 typedef struct commandList{
 	// Wrapper structure if there is more than one command
 	int command_count;
-	command* cmds[];
+	command* command_list[];
 }commandList;
 
 

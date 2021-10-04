@@ -8,11 +8,64 @@ Option: -a -b
 Note: if we do ls-a in command line this would result in command not found.
 So the first space determines what is a command from what is not.
 
-
-Current problem: Strncpy doesn't seem to copy anything
 */
 
 
+commandList* init_commandList_struct(char* line){
+	/* Initialize the struct after parsing commmand */
+	int command_count = get_command_count(line);
+	commandList* commands;
+
+	// we use calloc to initialize directly here
+	commands = calloc(sizeof(commandList) + command_count * sizeof(command*), sizeof(commands));
+	if(commands == NULL){
+		fprintf(stderr, "Error when allocating command list in init_command_struct()\n");
+		exit(1);
+	}
+	commands->command_count;
+
+	return commands;
+}
+
+char** get_command_list(char* line){
+	char** command_list = (char**) malloc(sizeof(char*)*);
+
+	char buff[BUFFER_SIZE];
+    char delim[] = "|";
+    strcpy(buff, line);
+    int count = 0;
+    char* piece = strtok(buff, delim);
+    
+    while(piece != NULL){
+
+        piece = strtok(NULL, delim);
+    }
+	return command_list;
+}
+/* // might need to delete
+int hasPipe(char* line){
+	// Given line taken from stdin, we check whether or not the command has pipes.
+	//   Return number of pipes.
+	 
+
+    char buff[BUFFER_SIZE];
+    char delim[] = "|";
+    strcpy(buff, line);
+    int count = 0;
+    char* piece = strtok(buff, delim);
+    
+    if(piece) count++;
+    while(piece != NULL){
+        count++;
+        piece = strtok(NULL, delim);
+    }
+    printf("%d\n", count); // for debug
+    if(count %2 != 0) printf("Invalid command \n"); // for debug
+
+    return count;
+}
+
+*/
 int is_built_in(command *command){
 	// we are implementing cd, jobs, fg and exit commands
 	// if the command enters is one of those 4 is_built_in returns true (1) else false
@@ -30,7 +83,10 @@ char* get_base_dir(){
 	char *token = NULL;
 
 	char *base_dir = (char*) malloc(sizeof(char) * MAX_PATH_LENGTH);
-	
+	if(base_dir == NULL){
+		fprintf(stderr, "Error when allocating string in get_base_dir()\n");
+		exit(1);
+	}
 	memset(base_dir, ' ', MAX_PATH_LENGTH);
 	memset(buff, ' ', MAX_PATH_LENGTH);
 	
@@ -75,7 +131,13 @@ char *get_line_from_stdin(){
 
 	return line;
 }
-char** read_command(char *line){
+
+char ** read_command(char* line){
+	/* Will call appropriate helper function depending on pipe's count */
+	return get_pipes_count(line) == 0 ? read_command_with_no_pipes(line) : read_command_with_pipes(line);
+}
+
+char** read_command_with_no_pipes(char* line){
 	//char buffer[BUFFER_SIZE]; // stdin
 	
 	char delimiter[] = " \n"; // delimiters to use
@@ -84,8 +146,8 @@ char** read_command(char *line){
 
 	//int token_count = command_count();
 	char **tokens = (char**) (malloc(sizeof(char*) * BUFFER_SIZE));
-	if(!tokens){
-		fprintf(stderr, "Malloc did not work\n");
+	if(tokens == NULL){
+		fprintf(stderr, "Error while allocating memory in read_command_with_no_pipe()\n");
 		exit(1);
 	}
 
@@ -100,23 +162,61 @@ char** read_command(char *line){
 	return tokens;
 }
 
-int command_count(char* input){
+char** read_command_with_pipes(char* line){
+	char **tokens = (char**) (malloc(sizeof(char*) * BUFFER_SIZE));
+	if(tokens == NULL){
+		fprintf(stderr, "Error while allocating memory in read_command_with_pipe()\n");
+		exit(1);
+	}
+
+	char delimiter[] = "|"; // delimiters to use
+	int current_token_index = 0;
+	char *token = NULL;
+
+	//int token_count = command_count();
+	token = strtok(line, delimiter);
+	while(token != NULL){
+		tokens[current_token_index] = strdup(token); // make a copy of token
+		token = strtok(NULL, delimiter);
+		current_token_index++;
+	}
+	tokens[current_token_index] = token;
+}
+
+int get_pipes_count(char* line){
+	int count = 0;
+
+	while(*line != '\0'){
+		if(*line == '|')
+			count++;
+		line++;
+	}
+
+	return count;
+}
+int get_command_count(char* line){
 	/*
 		Count by default is 0 as a blank line can be considered a command.
 		Every time it encounters a pipe it increments as it expects a correct input
 	*/
 	int count = 0;
 	//printf("Inside func count =%d\n", count);
+	
+	// Invalid command
+	if(line[0] == '|' || line[strlen(line)-1] == '|'){
+		fprintf(stderr, "Error: Invalid command\n");
+		return 0; // I want to stop right here
+	}
 
-	while(*input != '\n' && *input != '\0') {
-		char c = *input;
+	while(*line != '\n' && *line != '\0') {
+		char c = *line;
 		//printf("c = %c and count = %d\n", c, count);
 
 		if(c == '|'){
 			count++;
 		}
 		
-		input++;
+		line++;
 	}
 
 	count++; // since we met a \n
@@ -133,7 +233,15 @@ void free_arrays_of_pointers(char **arr, size_t size){
 	free(arr);
 }
 
-
+/*
+void testHasPipe(){
+	char *line = "There is a pipe in this string"; // should pass
+	if(hasPipe(line) > 0)
+		printf("There is a pipe\n");
+	else if(hasPipe(line) == 0)
+		printf("There is no pipe\n");
+}
+*/
 void testStruct(){
 	command*command;
 	command = malloc(sizeof(command));
