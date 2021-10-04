@@ -1,8 +1,6 @@
+#include "common.h"
 #include "parseCommand.h"
 #include "runCommand.h"
-
-void tokenizationTest();
-
 
 void init_shell(){
 
@@ -21,12 +19,14 @@ int main(int argc, char ** argv){
 	//read_command(line);
 	//testStruct();
 	//test_built_in();
-	init_shell();
+	test_my_system();
+	//init_shell();
 	return 0;
 }
 
 /*
 Resources:
 - Different types of whitespace in C: https://user-web.icecube.wisc.edu/~dglo/c_class/charfunc.html#:~:text=In%20ASCII%2C%20whitespace%20characters%20are,formfeed%20(%20'%5Cf'%20).
+- "Advanced Programming in the Unix environment", W.Richard Stevens and Steven A.Rago
 
 */

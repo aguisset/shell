@@ -1,5 +1,109 @@
 #include "runCommand.h"
+#define BINARY_PATH "/bin/"
+#define USR_BINARY_PATH "usr/bin/"
+#define EXEC_PATH "./"
 
+int is_abs_path(char * path){
+	// Returns 1 if it's an absolute path 0 if it is relative
+	return path[0] == '/' ? 1 : 0;
+}
+
+int count_arg(command*command){
+	/* After last argument there is a NULL character in argv  */
+	int count = 0;
+	int i = 0;
+	while(command->argv[i++] != NULL)
+		count++;
+
+	return count;
+}
+int my_system(command* command){
+	/*Executing a command without replacing the current process requires to use create a new process
+	*/
+	pid_t pid;
+	char binary_path[MAX_PATH_LENGTH];
+	char usr_binary_path[MAX_PATH_LENGTH];
+	char exec_path[MAX_PATH_LENGTH];
+
+	int ARGUMENT_SIZE = command->argc;//should have my command + all arguments and one spot for null char
+	char *path = strdup(command->cmd);
+	
+	char *argv[ARGUMENT_SIZE+1];
+	//memset(argv, '\0', sizeof(char*) * (ARGUMENT_SIZE+1));
+
+	strcpy(binary_path, BINARY_PATH);
+	strcpy(usr_binary_path, USR_BINARY_PATH);
+	strcpy(exec_path, EXEC_PATH);
+
+	for(int i = 1; i < ARGUMENT_SIZE; i++){
+		
+		argv[i] = strdup(command->argv[i-1]);
+		
+		//printf("argv[%d] = %s\n", i, command->argv[i-1]); // for debug
+
+	}
+	argv[ARGUMENT_SIZE] = NULL;
+	
+	//printf("Last element of ARGV is %s\n", argv[ARGUMENT_SIZE]); // for debug
+
+	pid = fork();
+
+	if(pid == 0){
+		// child process
+		//printf("Child process\n"); // for debug
+		if(path[0] == '.' && path[1] == '/'){
+			printf("Executable detected\n"); // for debug
+
+			
+			//printf("Binary path %s\n", binary_path); // for debug
+			argv[0] = strdup(path);
+			//printf("argv[0] = %s\n", argv[0]); // for debug
+
+			if(execv(path, argv) == -1){
+				fprintf(stderr, "Error: Invalid Program\n");
+				exit(1);
+			}
+		}
+		else if(!is_abs_path(path)){
+			printf("Relative path\n"); // for debug
+
+			//Relative path must look in /bin first then /usr/bin/
+
+			strcat(binary_path, command->cmd);
+			//printf("Binary path %s\n", binary_path); // for debug
+			argv[0] = strdup(binary_path);
+			//printf("argv[0] = %s\n", argv[0]); // for debug
+ 			if(execv(binary_path, argv) == -1){
+				
+				strcat(usr_binary_path, command->cmd);
+				//printf("usr_binary path %s\n", usr_binary_path); // for debug
+				argv[0] = strdup(usr_binary_path);
+				//printf("argv[0] = %s\n", argv[0]); // for debug
+				if(execv(usr_binary_path, argv) == -1){
+					fprintf(stderr, "Error: Invalid Program\n");
+					exit(1);
+				}
+			}
+		}
+		else if(is_abs_path(path)){
+			printf("Absolute path\n"); // for debug
+			// absolute path
+			argv[0] = strdup(path);
+			if(execv(path, argv) == -1){
+				fprintf(stderr, "Error: Invalid Program\n");
+				exit(1);
+			}
+		}
+		else{
+			fprintf(stderr, "Error: Invalid Program\n");
+			exit(1);
+		}
+	}
+
+	wait(NULL); // wait until the child process is done
+
+	return 0;
+}
 
 void exec_built_in_command(command * command){
 	if(!strcmp(command->cmd, "cd")){ 
@@ -21,6 +125,9 @@ void exec_built_in_command(command * command){
 			fprintf(stderr, "Error: invalid command\n");
 		else
 			exec_exit();
+	}
+	else{
+		// for any other program we will execute it using exec
 	}
 
 	return;
@@ -50,6 +157,42 @@ int exec_cd(char* path){
 	return 0;
 }
 
+void test_my_system(){
+	
+	command*command;
+
+	command = malloc(sizeof(command));
+
+	/* // Testing relative path
+	command->argc = 2;
+	command->cmd = "ls";
+	command->argv[0] = "-a";
+	command->argv[1] = NULL;
+	*/
+
+	/*//Testing absolute path
+	command->argc = 2;
+	command->cmd = "/Users/guisset/Documents/NYU/Classes/OS/labs/nyuc/nyuc";
+	command->argv[0] = "something";
+	command->argv[1] = NULL;
+	*/
+
+	/*
+	// Testing current working directory (should PASS)
+	command->argc = 1;
+	command->cmd = "./nyuc";
+	command->argv[0] = NULL;
+	//command->argv[1] = NULL;
+	*/
+
+	// Testing current working directory (should not PASS)
+	command->argc = 1;
+	command->cmd = "nyuc";
+	command->argv[0] = NULL;
+	//command->argv[1] = NULL;
+	
+	my_system(command);
+}
 void test_built_in(){
 	command*command; // for cd
 	struct command* command_jobs;
