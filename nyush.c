@@ -7,11 +7,13 @@ void init_shell(){
 	while(1){
 		char* base_dir;
 		char* line;
+		commandList* commandList;
 
 		base_dir = get_base_dir();
 		printf("[nyush %s]$ _", base_dir);
 		line = get_line_from_stdin();
-
+		commandList = init_commandList_struct(line);
+		testInitStructure(commandList);
 	}
 }
 int main(int argc, char ** argv){
@@ -22,7 +24,7 @@ int main(int argc, char ** argv){
 	//test_my_system();
 	
 	
-	//init_shell();
+	init_shell();
 	return 0;
 }
 
