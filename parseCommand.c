@@ -140,7 +140,7 @@ commandList* read_command(char* line){
 	/* Will call appropriate helper function depending on pipe's count */
 	int command_count = get_command_count(line);
 
-	commandList* commandList = calloc(sizeof(commandList) + command_count * sizeof(command*), sizeof(commandList));
+	commandList* commandList = calloc(sizeof(struct commandList) + command_count * sizeof(struct command*), sizeof(struct commandList));
 	if(get_pipes_count(line) == 0){
 		
 		command*command = read_command_with_no_pipes(line);
@@ -160,7 +160,7 @@ command* read_command_with_no_pipes(char* line){
 	int current_token_index = 0;
 	int count = 0;
 	char *token = NULL;
-	command = malloc(sizeof(command));
+	command = malloc(sizeof(struct command));
 	if(command == NULL){
 		fprintf(stderr, "Error while allocating memory in read_command_with_no_pipes()\n");
 		exit(1);
@@ -168,22 +168,20 @@ command* read_command_with_no_pipes(char* line){
 
 	//int token_count = command_count();
 
-	token = strtok(line, delimiter);
-
-	if(token == NULL){
-		fprintf(stderr, "Error: No space to split in read_command_with_no_pipes()");
-		exit(1);
-	}
+	
 	
 	command->cmd = token; // first part of split corresponds to the actual command
-	
+	printf("\t\t[rwp]: before loop current_token_index = %d\n", current_token_index);
 	// getting arguments of command
-	while(token != NULL){
+	while((token = strtok_r(line, delimiter, &line)) != NULL){
+		if(count == 0) command->cmd = token; // first part of split corresponds to the actual command
 		count++;
+		
 		command->argv[current_token_index] = token; 
-		token = strtok(NULL, delimiter);
+		
 		current_token_index++;
 	}
+	printf("\t\t[rwp]: current_token_index = %d\n", current_token_index);
 
 	command->argv[current_token_index] = token; // set last arguments to NULL for convenience
 	command->argc = count;
@@ -193,14 +191,17 @@ command* read_command_with_no_pipes(char* line){
 
 
 commandList* read_command_with_pipes(char* line){
+	char buffer[BUFFER_SIZE];
 	commandList* commandList;
 	int command_count = get_command_count(line);
-	char delimiter[] = "|"; // delimiters to use
+	//printf("[rcp]: command count = %d\n", command_count);// for debug
+	char delimiter[] = "|\n"; // delimiters to use
 	int current_token_index = 0;
 	char *token = NULL;
 
 	// we use calloc to initialize directly here
 	commandList = calloc(sizeof(commandList) + command_count * sizeof(command*), sizeof(commandList));
+	
 	if(commandList == NULL){
 		fprintf(stderr, "Error when allocating command list in read_command_with_pipes()\n");
 		exit(1);
@@ -208,18 +209,35 @@ commandList* read_command_with_pipes(char* line){
 	commandList->command_count = command_count;
 	
 	//int token_count = command_count();
-	token = strtok(line, delimiter);
-	if(token == NULL){
-		fprintf(stderr, "Error: No pipes to split in read_command_with_pipes()");
-		exit(1);
-	}
+	//token = strtok(line, delimiter);
+	
 
-	while(token != NULL){
+	while ((token = strtok_r(line, delimiter, &line)) != NULL){
+		printf("[rcp]: token = %s\n", token);
 		commandList->command_list[current_token_index] = read_command_with_no_pipes(token);
-		//tokens[current_token_index] = read_command_with_no_pipes(token); // make a copy of token
-		token = strtok(NULL, delimiter);
+		printf("\t[rcp]: commandList->command_list[%d]->argv[0] = %s\n", current_token_index, commandList->command_list[current_token_index]->argv[0]);
+		printf("\t[rcp]: commandList->command_list[%d]->argv[1] = %s\n", current_token_index, commandList->command_list[current_token_index]->argv[1]);
 		current_token_index++;
 	}
+	
+	/*
+	do{
+		printf("[rcp]: token = %s\n", token);
+		commandList->command_list[current_token_index] = read_command_with_no_pipes(token);
+		current_token_index++;
+	}while((token = strtok(NULL, delimiter)) != NULL);
+	*/
+	/*
+	while((token = strtok(line, delimiter)) != NULL){
+		printf("[rcp]: token in loop = %s\n", token);
+		commandList->command_list[current_token_index] = read_command_with_no_pipes(token);
+		//tokens[current_token_index] = read_command_with_no_pipes(token); // make a copy of token
+		line = NULL;
+		current_token_index++;
+		printf("[rcp]: current_token_index = %d\n", current_token_index);
+	}
+	printf("[rcp]: token = %s\n", token);
+	*/
 	commandList->command_list[current_token_index] = NULL; // set last command_list to null
 
 	return commandList;
@@ -260,9 +278,9 @@ void testHasPipe(){
 void testStruct(){
 	
 	//commandList* commandList;
-	commandList* commandList2;
+	struct commandList* commandList2;
 	//char line[] = "ls -a\n"; // STRTOK MODIFIES THE STRING SO USE char arr[] instead
-	char line2[] = "cat something | cat somethingAgain\n";
+	char line2[] = "cat1 something | cat2 somethingAgain\n";
 	//commandList = read_command(line);
 	commandList2 = read_command(line2);
 	/*
@@ -275,10 +293,13 @@ void testStruct(){
 
 	printf("%d\n", commandList2->command_count);
 
-	printf("%s\n", commandList2->command_list[1]->cmd);
-	printf("%d\n", commandList2->command_list[1]->argc);
+
+	//printf("%d\n", commandList2->command_list[0]->argc);
+	printf("%s\n", commandList2->command_list[0]->argv[0]);
+	printf("%s\n", commandList2->command_list[0]->argv[1]);
 	printf("%s\n", commandList2->command_list[1]->argv[0]);
 	printf("%s\n", commandList2->command_list[1]->argv[1]);
+
 	
 	//printf("%s\n", commandList->command_list[0]->cmd);
 	return;
