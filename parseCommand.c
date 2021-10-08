@@ -280,7 +280,7 @@ void testStruct(){
 	//commandList* commandList;
 	struct commandList* commandList2;
 	//char line[] = "ls -a\n"; // STRTOK MODIFIES THE STRING SO USE char arr[] instead
-	char line2[] = "cat1 something | cat2 somethingAgain\n";
+	char line2[] = "cat shell.c | grep main | less\n";
 	//commandList = read_command(line);
 	commandList2 = read_command(line2);
 	/*
@@ -293,13 +293,19 @@ void testStruct(){
 
 	printf("%d\n", commandList2->command_count);
 
-
+	for(int i = 0; i < commandList2->command_count; i++){
+		for(int j = 0; j < commandList2->command_list[i]->argc; j++){
+			printf("%s\n", commandList2->command_list[i]->argv[j]);
+		}
+		
+	}
+	/*
 	//printf("%d\n", commandList2->command_list[0]->argc);
 	printf("%s\n", commandList2->command_list[0]->argv[0]);
 	printf("%s\n", commandList2->command_list[0]->argv[1]);
 	printf("%s\n", commandList2->command_list[1]->argv[0]);
 	printf("%s\n", commandList2->command_list[1]->argv[1]);
-
+	*/
 	
 	//printf("%s\n", commandList->command_list[0]->cmd);
 	return;
