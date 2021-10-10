@@ -22,8 +22,8 @@ int main(int argc, char ** argv){
 	//testStruct();
 	//test_built_in();
 	//test_my_system();
-	
-	testStruct();
+	//testStruct();
+ 	//testRedirection();
 	//init_shell();
 	return 0;
 }
@@ -34,4 +34,6 @@ Resources:
 - "Advanced Programming in the Unix environment", W.Richard Stevens and Steven A.Rago
 - Flexible array members in a structure: https://www.geeksforgeeks.org/flexible-array-members-structure-c/
 - How to split strings in C: https://www.youtube.com/watch?v=34DnZ2ewyZo&ab_channel=CodeVault
+- Valgrind errors: https://stackoverflow.com/questions/9300227/tracking-down-valgrind-40-bytes-in-1-blocks-are-definitely-lost-in-loss-record
+- How to use strstr: https://www.tutorialspoint.com/c_standard_library/c_function_strstr.htm
 */

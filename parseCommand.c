@@ -10,6 +10,23 @@ So the first space determines what is a command from what is not.
 
 */
 
+int hasOutputRedirection(char* input){
+	// returns true (1) if the string has an output redirection
+
+	char* ret;
+	char* ret2;
+	ret = strstr(input, ">");
+	ret2 = strstr(input, ">>");
+
+	return ret != NULL || ret2 != NULL ? 1: 0;
+}
+
+int hasInputRedirection(char* input){
+	// Returns true (1) if the string has an input redirection
+	char *ret;
+	ret = strstr(input, "<");
+	return ret == NULL ? 0: 1;
+}
 
 commandList* init_commandList_struct(char* line){
 	/* Initialize the struct after parsing commmand */
@@ -322,6 +339,17 @@ void testInitStructure(commandList* commandList){
 		while(command->argv[j] != NULL)
 			printf("\t%s\n", command->argv[j++]);
 	}
+
+	return;
+}
+
+
+void testRedirection(){
+	char* input = "cat < input.txt >> output.txt\n";
+	if(hasInputRedirection(input))
+		printf("The input command has an input redirection\n");
+	if(hasOutputRedirection(input))
+		printf("The input command has an output redirection\n");
 
 	return;
 }
