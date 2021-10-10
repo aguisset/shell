@@ -187,7 +187,7 @@ command* read_command_with_no_pipes(char* line){
 
 	
 	
-	command->cmd = token; // first part of split corresponds to the actual command
+	command->cmd = token; // first part of split corresponds to the actual command (init to NULL)
 	printf("\t\t[rwp]: before loop current_token_index = %d\n", current_token_index); // for debug
 	
 	// getting arguments of command
@@ -209,7 +209,6 @@ command* read_command_with_no_pipes(char* line){
 
 
 commandList* read_command_with_pipes(char* line){
-	char buffer[BUFFER_SIZE];
 	commandList* commandList;
 	int command_count = get_command_count(line);
 	//printf("[rcp]: command count = %d\n", command_count);// for debug

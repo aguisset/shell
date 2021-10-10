@@ -3,8 +3,10 @@
 #define USR_BINARY_PATH "usr/bin/"
 #define EXEC_PATH "./"
 
+
 int is_abs_path(char * path){
 	// Returns 1 if it's an absolute path 0 if it is relative
+	
 	return path[0] == '/' ? 1 : 0;
 }
 
@@ -17,9 +19,33 @@ int count_arg(command*command){
 
 	return count;
 }
-int my_system(command* command){
+
+int run_commands(commandList* commandList){
+	int status = 0;
+	if(commandList->command_count > 1){
+		// more than one command to execute
+		
+		for(int i = 0; i < commandList->command_count; i++){
+			status = run_command(commandList->command_list[i]);
+		}
+	}
+	else{
+		// only one command to execute
+		status = run_command(commandList->command_list[0]);
+	}
+
+	return status;
+}
+int run_command(command* command){
 	/*Executing a command without replacing the current process requires to use create a new process
 	*/
+	if(command->cmd == NULL){
+		// blank line
+		return 0;
+	}
+
+	printf("Run command\n");
+	int state = 0; // will tell us if exit command has been called
 	pid_t pid;
 	char binary_path[MAX_PATH_LENGTH];
 	char usr_binary_path[MAX_PATH_LENGTH];
@@ -28,19 +54,17 @@ int my_system(command* command){
 	int ARGUMENT_SIZE = command->argc;//should have my command + all arguments and one spot for null char
 	char *path = strdup(command->cmd);
 	
-	char *argv[ARGUMENT_SIZE+1];
+	char *argv[ARGUMENT_SIZE+1]; // will contain all the arguments except command itself
 	//memset(argv, '\0', sizeof(char*) * (ARGUMENT_SIZE+1));
 
 	strcpy(binary_path, BINARY_PATH);
 	strcpy(usr_binary_path, USR_BINARY_PATH);
 	strcpy(exec_path, EXEC_PATH);
 
+	// making a copy of element of struct command (if we don't want to make any changes to it)
 	for(int i = 1; i < ARGUMENT_SIZE; i++){
-		
 		argv[i] = strdup(command->argv[i-1]);
-		
 		//printf("argv[%d] = %s\n", i, command->argv[i-1]); // for debug
-
 	}
 	argv[ARGUMENT_SIZE] = NULL;
 	
@@ -65,6 +89,7 @@ int my_system(command* command){
 			}
 		}
 		else if(!is_abs_path(path)){
+			// Relative path this is where you can find built in command
 			printf("Relative path\n"); // for debug
 
 			//Relative path must look in /bin first then /usr/bin/
@@ -73,8 +98,13 @@ int my_system(command* command){
 			//printf("Binary path %s\n", binary_path); // for debug
 			argv[0] = strdup(binary_path);
 			//printf("argv[0] = %s\n", argv[0]); // for debug
- 			if(execv(binary_path, argv) == -1){
-				
+
+			if(is_built_in(command)){
+				printf("[rc]: Built in command\n"); // for debug
+				state = exec_built_in_command(command);
+			}
+ 			else if(execv(binary_path, argv) == -1){
+				printf("[rc]: Not a built in command\n"); // for debug
 				strcat(usr_binary_path, command->cmd);
 				//printf("usr_binary path %s\n", usr_binary_path); // for debug
 				argv[0] = strdup(usr_binary_path);
@@ -102,15 +132,18 @@ int my_system(command* command){
 
 	wait(NULL); // wait until the child process is done
 
-	return 0;
+	return state;
 }
 
-void exec_built_in_command(command * command){
+int exec_built_in_command(command * command){
+	printf("[exBuiltIn]: Executing built in command\n"); // for debug
+	int state = 0;
 	if(!strcmp(command->cmd, "cd")){ 
-		//printf("cd command is being executed\n");
+		printf("cd command is being executed\n"); // for debug
 		if(command->argc == 2)
 			exec_cd(command->argv[0]);
 		else{
+			printf("cd doesn't have the required argument\n"); // for debug
 			fprintf(stderr, "Error: invalid command\n");
 			//exit(1);
 		}
@@ -124,16 +157,16 @@ void exec_built_in_command(command * command){
 		if(command->argc > 1)
 			fprintf(stderr, "Error: invalid command\n");
 		else
-			exec_exit();
+			state = exec_exit();
 	}
 	else{
 		// for any other program we will execute it using exec
 	}
 
-	return;
+	return state;
 }
 
-void exec_exit(){
+int exec_exit(){
 	/* This command terminates your shell. 
 	However, if there are currently suspended jobs, your shell should not terminate.
 
@@ -141,9 +174,9 @@ void exec_exit(){
 	(those that are in the background), we need to count them
 	*/
 	printf("Terminating the shell\n");
-	exit(0);
+	//exit(0);
 	
-	return;
+	return EXIT;
 }
 
 int exec_cd(char* path){
@@ -191,8 +224,9 @@ void test_my_system(){
 	command->argv[0] = NULL;
 	//command->argv[1] = NULL;
 	
-	my_system(command);
+	run_command(command);
 }
+
 void test_built_in(){
 	command*command; // for cd
 	struct command* command_jobs;

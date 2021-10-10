@@ -2,19 +2,60 @@
 #include "parseCommand.h"
 #include "runCommand.h"
 
+static void signal_handler(int signo){
+	
+	switch(signo){
+		case SIGINT:
+			//CLTR-C
+			break;
+		case SIGQUIT:
+			
+			break;
+		case SIGTERM:
+			
+			break;
+		case SIGTSTP:
+			// CLTR-Z
+			
+			break;
+		case EXIT:
+			printf("No other job, terminating the shell....\n");
+			kill(getppid(), SIGTERM);
+			break;
+		default:
+			//other jobs not handled
+			break;
+	}
+}
 void init_shell(){
+	int status = 0;
 
-	while(1){
+	// Signal handling
+	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
+	signal(SIGTSTP, signal_handler);
+	signal(SIGQUIT, signal_handler);
+	while(!status){
 		char* base_dir;
 		char* line;
 		commandList* commandList;
-
+		
 		base_dir = get_base_dir();
 		printf("[nyush %s]$ _", base_dir);
 		line = get_line_from_stdin();
+
+		//fflush() // remember to flush stdout
 		commandList = init_commandList_struct(line);
-		testInitStructure(commandList);
+		status = run_commands(commandList); // this has a segfault if ^C or blank line (FIXED in run_command)
+		
+
+		printf("Status = %d\n", status);
+		
+		//testInitStructure(commandList); // at this stage we know our structre has been created properly
 	}
+	
+	//kill(getppid(), SIGTERM);
+	return;
 }
 int main(int argc, char ** argv){
 	//char *line = get_line_from_stdin();
@@ -24,7 +65,7 @@ int main(int argc, char ** argv){
 	//test_my_system();
 	//testStruct();
  	//testRedirection();
-	//init_shell();
+	init_shell();
 	return 0;
 }
 
