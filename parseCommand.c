@@ -188,7 +188,8 @@ command* read_command_with_no_pipes(char* line){
 	
 	
 	command->cmd = token; // first part of split corresponds to the actual command
-	printf("\t\t[rwp]: before loop current_token_index = %d\n", current_token_index);
+	printf("\t\t[rwp]: before loop current_token_index = %d\n", current_token_index); // for debug
+	
 	// getting arguments of command
 	while((token = strtok_r(line, delimiter, &line)) != NULL){
 		if(count == 0) command->cmd = token; // first part of split corresponds to the actual command
