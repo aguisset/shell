@@ -73,7 +73,9 @@ int run_command(command* command){
 
 	if(pid == 0){
 		// child process
-		//printf("Child process\n"); // for debug
+		
+		/*Handling input/output redirection here*/
+		//if(hasInputRedirection())
 		if(path[0] == '.' && path[1] == '/'){
 			printf("Executable detected\n"); // for debug
 
