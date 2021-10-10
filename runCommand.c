@@ -44,7 +44,6 @@ int run_command(command* command){
 		return 0;
 	}
 
-	printf("Run command\n");
 	int state = 0; // will tell us if exit command has been called
 	pid_t pid;
 	char binary_path[MAX_PATH_LENGTH];
@@ -54,7 +53,7 @@ int run_command(command* command){
 	int ARGUMENT_SIZE = command->argc;//should have my command + all arguments and one spot for null char
 	char *path = strdup(command->cmd);
 	
-	char *argv[ARGUMENT_SIZE+1]; // will contain all the arguments except command itself
+	char *argv[ARGUMENT_SIZE+1]; // will contain all the arguments and NULL (See execv doc)
 	//memset(argv, '\0', sizeof(char*) * (ARGUMENT_SIZE+1));
 
 	strcpy(binary_path, BINARY_PATH);
@@ -63,7 +62,7 @@ int run_command(command* command){
 
 	// making a copy of element of struct command (if we don't want to make any changes to it)
 	for(int i = 1; i < ARGUMENT_SIZE; i++){
-		argv[i] = strdup(command->argv[i-1]);
+		argv[i] = strdup(command->argv[i]);
 		//printf("argv[%d] = %s\n", i, command->argv[i-1]); // for debug
 	}
 	argv[ARGUMENT_SIZE] = NULL;
@@ -104,6 +103,7 @@ int run_command(command* command){
 				state = exec_built_in_command(command);
 			}
  			else if(execv(binary_path, argv) == -1){
+ 				// will reach here only if there is an issue
 				printf("[rc]: Not a built in command\n"); // for debug
 				strcat(usr_binary_path, command->cmd);
 				//printf("usr_binary path %s\n", usr_binary_path); // for debug

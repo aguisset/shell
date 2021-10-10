@@ -48,6 +48,8 @@ void init_shell(){
 		commandList = init_commandList_struct(line);
 		status = run_commands(commandList); // this has a segfault if ^C or blank line (FIXED in run_command)
 		
+		// handle zombies
+
 
 		printf("Status = %d\n", status);
 		
@@ -72,7 +74,7 @@ int main(int argc, char ** argv){
 /*
 Resources:
 - Different types of whitespace in C: https://user-web.icecube.wisc.edu/~dglo/c_class/charfunc.html#:~:text=In%20ASCII%2C%20whitespace%20characters%20are,formfeed%20(%20'%5Cf'%20).
-- "Advanced Programming in the Unix environment", W.Richard Stevens and Steven A.Rago
+- "Advanced Programming in the Unix environment", W.Richard Stevens and Steven A.Rago (Chapter 8, 10)
 - Flexible array members in a structure: https://www.geeksforgeeks.org/flexible-array-members-structure-c/
 - How to split strings in C: https://www.youtube.com/watch?v=34DnZ2ewyZo&ab_channel=CodeVault
 - Valgrind errors: https://stackoverflow.com/questions/9300227/tracking-down-valgrind-40-bytes-in-1-blocks-are-definitely-lost-in-loss-record
