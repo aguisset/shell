@@ -9,14 +9,14 @@
 // Structure that contains the parsed command
 typedef struct command{ 
 	int argc; // number of argument including that command
-	char* argv[ARGUMENTS]; // arguments like -a, terminated by NULL (need to memset)
-	char *cmd; // actual command like ls
+	char* argv[ARGUMENTS]; // contains command + arguments terminated by NULL for convenience
+	char* cmd; // actual command like ls
 }command;
 
 typedef struct commandList{
 	// Wrapper structure if there is more than one command
 	int command_count;
-	command* cmds[];
+	command* command_list[];
 }commandList;
 
 
