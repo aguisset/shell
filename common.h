@@ -9,6 +9,10 @@
 // Structure that contains the parsed command
 typedef struct command{ 
 	int argc; // number of argument including that command
+	int isOutput; // boolean set to 1 (true) if there is an output redirection
+	int isInput; // boolean set to 1 (true) if there is an input redirection
+	char* input;
+	char* output;
 	char* argv[ARGUMENTS]; // contains command + arguments terminated by NULL for convenience
 	char* cmd; // actual command like ls
 }command;

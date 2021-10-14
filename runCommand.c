@@ -52,7 +52,8 @@ int run_command(command* command){
 
 	int ARGUMENT_SIZE = command->argc;//should have my command + all arguments and one spot for null char
 	char *path = strdup(command->cmd);
-	
+	int fd[2]; // file descriptors
+
 	char *argv[ARGUMENT_SIZE+1]; // will contain all the arguments and NULL (See execv doc)
 	//memset(argv, '\0', sizeof(char*) * (ARGUMENT_SIZE+1));
 
@@ -73,9 +74,24 @@ int run_command(command* command){
 
 	if(pid == 0){
 		// child process
-		
 		/*Handling input/output redirection here*/
-		//if(hasInputRedirection())
+		if(command->isInput){ // see [8] Handling redirections
+			fd[0] = open(command->input, O_RDONLY);
+			dup2(fd[0], STDIN_FILENO);
+			close(fd[0]);
+		}
+		
+		if(command->isOutput){ // see [8] Handling redirections
+			fd[1] = creat(command->output , 0644);
+			dup2(fd[1], STDOUT_FILENO);
+			close(fd[1]);
+		}
+
+		/*
+			...now the child has stdin coming from the input file, 
+			    ...stdout going to the output file, and no extra files open.
+			    ...it is safe to execute the command to be executed.
+		*/
 		if(path[0] == '.' && path[1] == '/'){
 			printf("Executable detected\n"); // for debug
 
@@ -99,7 +115,7 @@ int run_command(command* command){
 			//printf("Binary path %s\n", binary_path); // for debug
 			argv[0] = strdup(binary_path);
 			//printf("argv[0] = %s\n", argv[0]); // for debug
-
+			
 			if(is_built_in(command)){
 				printf("[rc]: Built in command\n"); // for debug
 				state = exec_built_in_command(command);

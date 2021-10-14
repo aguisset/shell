@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <signal.h>
+#include <fcntl.h>
 #include "common.h"
 #define EXIT -1 // might delete this later
 

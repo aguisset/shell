@@ -159,21 +159,67 @@ commandList* read_command(char* line){
 
 	commandList* commandList = calloc(sizeof(struct commandList) + command_count * sizeof(struct command*), sizeof(struct commandList));
 	if(get_pipes_count(line) == 0){
-		
-		command*command = read_command_with_no_pipes(line);
+		//command*command = NULL;
+		//if(hasInputRedirection(line) || hasOutputRedirection(line)) command = read_command_with_redirections(line);
+		command*command = read_command_with_no_pipes2(line);
 		commandList->command_count = 1; // we count blank command as one as well!
 		commandList->command_list[0] = command;
 	} 
-	else
+	else{
 		commandList = read_command_with_pipes(line);
+	}
 
 	return commandList;
+}
+
+command* read_command_with_no_pipes2(char *line){
+	char buffer[BUFFER_SIZE];
+	strncpy(buffer, line, BUFFER_SIZE);
+	
+	command* command = malloc(sizeof(struct command));
+	// Extract the first token
+	char * token = strtok(buffer, " ");
+	int tokenNb = 0;
+	// loop through the string to extract all other tokens
+	while( token != NULL ) {
+	   printf( "Token: %s\n", token);
+	   if(tokenNb == 0){
+	   	command->cmd = strdup(token);
+	   	command->argv[tokenNb++] = strdup(token);
+	   	token = strtok(NULL, " ");
+	   	continue;
+	   }
+	   if(!strcmp(token,"<")){
+			token = strtok(NULL, " ");
+			command->isInput = 1;
+			continue;
+		}
+		else if(!strcmp(token, ">>") || !strcmp(token, ">")){
+			token = strtok(NULL, " ");
+			command->isOutput = 1;
+			continue;
+		}
+	   command->argv[tokenNb] = strdup(token);
+	   printf( "argv: %s\n", command->argv[tokenNb]); //printing each token
+	   tokenNb++;
+	   token = strtok(NULL, " ");
+	}
+	
+	// for debug
+	for(int i = 0; i < tokenNb; i++){
+		printf("argv[%d]: %s\n", i, command->argv[i]);
+	}
+	// end of for debug
+	return command;
 }
 
 command* read_command_with_no_pipes(char* line){
 	//char buffer[BUFFER_SIZE]; // stdin
 	command* command;
-	char delimiter[] = " \n"; // delimiters to use
+	char delimiter[] = " "; // delimiters to use
+	//char input__red_delim[] = " <";
+	//char output__red_delim[] = " >"; 
+
 	int current_token_index = 0;
 	int count = 0;
 	char *token = NULL;
@@ -184,10 +230,9 @@ command* read_command_with_no_pipes(char* line){
 	}
 
 	//int token_count = command_count();
-
-	
 	
 	command->cmd = token; // first part of split corresponds to the actual command (init to NULL)
+	printf("\t\t[rwp]: before loop token = %s\n", token); // for debug
 	printf("\t\t[rwp]: before loop current_token_index = %d\n", current_token_index); // for debug
 	
 	// getting arguments of command
@@ -231,7 +276,7 @@ commandList* read_command_with_pipes(char* line){
 
 	while ((token = strtok_r(line, delimiter, &line)) != NULL){
 		printf("[rcp]: token = %s\n", token);
-		commandList->command_list[current_token_index] = read_command_with_no_pipes(token);
+		commandList->command_list[current_token_index] = read_command_with_no_pipes2(token);
 		printf("\t[rcp]: commandList->command_list[%d]->argv[0] = %s\n", current_token_index, commandList->command_list[current_token_index]->argv[0]);
 		printf("\t[rcp]: commandList->command_list[%d]->argv[1] = %s\n", current_token_index, commandList->command_list[current_token_index]->argv[1]);
 		current_token_index++;
@@ -344,6 +389,7 @@ void testInitStructure(commandList* commandList){
 }
 
 
+// expecting boolean
 void testRedirection(){
 	char* input = "cat < input.txt >> output.txt\n";
 	if(hasInputRedirection(input))
@@ -352,4 +398,20 @@ void testRedirection(){
 		printf("The input command has an output redirection\n");
 
 	return;
+}
+
+void testInputOutputRedirection(){
+	char* input = "cat < input.txt >> output.txt\n";
+	command*command = read_command_with_no_pipes2(input);
+
+	printf("command->isInput: %d\n", command->isInput);
+	printf("command->isOutput: %d\n", command->isOutput);
+	printf("command->output: %s\n", command->output);
+	printf("command->input: %s\n", command->input);
+	printf("command->cmd: %s\n", command->cmd);
+
+	for(int i = 0; i < command->argc; i++){
+		printf("command->argv[%d]:%s\n", i, command->argv[i]);
+	}
+	
 }

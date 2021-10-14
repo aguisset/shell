@@ -67,6 +67,7 @@ int main(int argc, char ** argv){
 	//test_my_system();
 	//testStruct();
  	//testRedirection();
+ 	//testInputOutputRedirection();
 	init_shell();
 	return 0;
 }
