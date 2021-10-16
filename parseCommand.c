@@ -178,7 +178,7 @@ command* read_command_with_no_pipes2(char *line){
 	
 	command* command = malloc(sizeof(struct command));
 	// Extract the first token
-	char * token = strtok(buffer, " ");
+	char * token = strtok(buffer, " \n");
 	int tokenNb = 0;
 	// loop through the string to extract all other tokens
 	while( token != NULL ) {
@@ -194,21 +194,38 @@ command* read_command_with_no_pipes2(char *line){
 			command->isInput = 1;
 			continue;
 		}
-		else if(!strcmp(token, ">>") || !strcmp(token, ">")){
+		else if(!strcmp(token, ">")){
 			token = strtok(NULL, " ");
 			command->isOutput = 1;
 			continue;
 		}
-	   command->argv[tokenNb] = strdup(token);
-	   printf( "argv: %s\n", command->argv[tokenNb]); //printing each token
-	   tokenNb++;
+		else if(!strcmp(token, ">>")){
+			token = strtok(NULL, " ");
+			command->isAppend = 1;
+			continue;
+		}
+	   if(!command->isInput && !command->isOutput) command->argv[tokenNb++] = strdup(token);
+	   
+	   // in case of redirection the next token is the file we are looking for
+	   if(command->isInput) command->input = token;
+	   if(command->isOutput) command->output = token;
+	   if(command->isAppend) command->append = token;
+
+	   //printf( "argv: %s\n", command->argv[tokenNb]); //printing each token for debug
+	   //tokenNb++;
 	   token = strtok(NULL, " ");
 	}
+	command->argc = tokenNb;
 	
 	// for debug
+	printf("Printing the argv\n");
 	for(int i = 0; i < tokenNb; i++){
 		printf("argv[%d]: %s\n", i, command->argv[i]);
 	}
+
+	printf("Printing the redirections\n");
+	if(command->isInput) printf("command->input = %s\n", command->input);
+	if(command->isOutput) printf("command->output = %s\n", command->output);
 	// end of for debug
 	return command;
 }

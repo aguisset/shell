@@ -43,31 +43,31 @@ int run_command(command* command){
 		// blank line
 		return 0;
 	}
-
-	int state = 0; // will tell us if exit command has been called
 	pid_t pid;
 	char binary_path[MAX_PATH_LENGTH];
 	char usr_binary_path[MAX_PATH_LENGTH];
 	char exec_path[MAX_PATH_LENGTH];
-
+	int state = 0; // will tell us if exit command has been called
 	int ARGUMENT_SIZE = command->argc;//should have my command + all arguments and one spot for null char
+	char *argv[ARGUMENT_SIZE+1]; // will contain all the arguments and NULL (See execv doc)
 	char *path = strdup(command->cmd);
 	int fd[2]; // file descriptors
-
-	char *argv[ARGUMENT_SIZE+1]; // will contain all the arguments and NULL (See execv doc)
+	
 	//memset(argv, '\0', sizeof(char*) * (ARGUMENT_SIZE+1));
 
 	strcpy(binary_path, BINARY_PATH);
 	strcpy(usr_binary_path, USR_BINARY_PATH);
 	strcpy(exec_path, EXEC_PATH);
 
+	argv[0] = strdup(command->cmd);
+	printf("Printing argv from 1: \n"); // for debug
 	// making a copy of element of struct command (if we don't want to make any changes to it)
 	for(int i = 1; i < ARGUMENT_SIZE; i++){
 		argv[i] = strdup(command->argv[i]);
-		//printf("argv[%d] = %s\n", i, command->argv[i-1]); // for debug
+		printf("argv[%d] = %s\n", i, command->argv[i]); // for debug
 	}
 	argv[ARGUMENT_SIZE] = NULL;
-	
+	printf("argv[ARGUMENT_SIZE+1]= %s\n", argv[ARGUMENT_SIZE]);
 	//printf("Last element of ARGV is %s\n", argv[ARGUMENT_SIZE]); // for debug
 
 	pid = fork();
@@ -75,14 +75,30 @@ int run_command(command* command){
 	if(pid == 0){
 		// child process
 		/*Handling input/output redirection here*/
+		
 		if(command->isInput){ // see [8] Handling redirections
 			fd[0] = open(command->input, O_RDONLY);
+			fflush(stdin);
 			dup2(fd[0], STDIN_FILENO);
 			close(fd[0]);
 		}
 		
 		if(command->isOutput){ // see [8] Handling redirections
-			fd[1] = creat(command->output , 0644);
+			if((fd[1] = open(command->output , O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1){
+				fprintf(stderr, "Invalid file \n");
+				exit(1);
+			}
+			fflush(stdout);
+			dup2(fd[1], STDOUT_FILENO);
+			close(fd[1]);
+		}
+
+		if(command->isAppend){
+			if((fd[1] = open(command->append, O_WRONLY| O_APPEND)) == -1){
+				fprintf(stderr, "Invalid file \n");
+				exit(1);
+			}
+			fflush(stdout);
 			dup2(fd[1], STDOUT_FILENO);
 			close(fd[1]);
 		}
@@ -97,9 +113,11 @@ int run_command(command* command){
 
 			
 			//printf("Binary path %s\n", binary_path); // for debug
-			argv[0] = strdup(path);
+			//argv[0] = strdup(path);
 			//printf("argv[0] = %s\n", argv[0]); // for debug
-
+			//printf("pathh = %s\n", path); // for debug
+			printf("%s\n", command->cmd);
+			if(path[strlen(path)] == '\n') printf("something\n");
 			if(execv(path, argv) == -1){
 				fprintf(stderr, "Error: Invalid Program\n");
 				exit(1);
@@ -112,9 +130,12 @@ int run_command(command* command){
 			//Relative path must look in /bin first then /usr/bin/
 
 			strcat(binary_path, command->cmd);
-			//printf("Binary path %s\n", binary_path); // for debug
+			printf("Binary path %s\n", binary_path); // for debug
 			argv[0] = strdup(binary_path);
-			//printf("argv[0] = %s\n", argv[0]); // for debug
+			//char* someArgs[] = {"/bin/ls", "-l", NULL}; // for debug
+			//execv("/bin/ls", someArgs); // for debug
+			for(int i = 0; i <= ARGUMENT_SIZE; i++)
+				printf("argv[%d]: %s\n", i, argv[i]);
 			
 			if(is_built_in(command)){
 				printf("[rc]: Built in command\n"); // for debug
@@ -124,10 +145,11 @@ int run_command(command* command){
  				// will reach here only if there is an issue
 				printf("[rc]: Not a built in command\n"); // for debug
 				strcat(usr_binary_path, command->cmd);
-				//printf("usr_binary path %s\n", usr_binary_path); // for debug
+				printf("usr_binary path %s\n", usr_binary_path); // for debug
 				argv[0] = strdup(usr_binary_path);
-				//printf("argv[0] = %s\n", argv[0]); // for debug
+				printf("argv[0] = %s\n", argv[0]); // for debug
 				if(execv(usr_binary_path, argv) == -1){
+
 					fprintf(stderr, "Error: Invalid Program\n");
 					exit(1);
 				}
@@ -137,6 +159,9 @@ int run_command(command* command){
 			printf("Absolute path\n"); // for debug
 			// absolute path
 			argv[0] = strdup(path);
+			printf("path is: %s\n", path);
+			
+
 			if(execv(path, argv) == -1){
 				fprintf(stderr, "Error: Invalid Program\n");
 				exit(1);
@@ -159,7 +184,7 @@ int exec_built_in_command(command * command){
 	if(!strcmp(command->cmd, "cd")){ 
 		printf("cd command is being executed\n"); // for debug
 		if(command->argc == 2)
-			exec_cd(command->argv[0]);
+			exec_cd(command->argv[1]);
 		else{
 			printf("cd doesn't have the required argument\n"); // for debug
 			fprintf(stderr, "Error: invalid command\n");
@@ -192,9 +217,9 @@ int exec_exit(){
 	(those that are in the background), we need to count them
 	*/
 	printf("Terminating the shell\n");
-	//exit(0);
+	exit(0);
 	
-	return EXIT;
+	return -1;
 }
 
 int exec_cd(char* path){
@@ -208,72 +233,40 @@ int exec_cd(char* path){
 	return 0;
 }
 
+/******* Testing ******/
+
+
 void test_my_system(){
 	
 	command*command;
+	commandList* commandList;
+	char* input = "ls -l"; // PASS
+	//char* input = "cat > output.txt\n"; // PASS
+	//char* input = "./nyuc\n"; // PASS (needed to change the delimiter in strtok from " " to " \n")
+	//char* input = "./nyuc"; // PASS
+	//char* input = "./nyuc Abdoul"; // PASS
+	//char* input = "/Users/guisset/Documents/NYU/Classes/OS/labs/nyush/nyuc\n"; // PASS
+	//char* input = "/Users/guisset/Documents/NYU/Classes/OS/labs/nyush/nyuc"; // PASS
+	char* inputWithPipes = "cat | cat";
+	//command = read_command_with_no_pipes2(input);
+	commandList = read_command_with_pipes(inputWithPipes);
 
-	command = malloc(sizeof(command));
-
-	/* // Testing relative path
-	command->argc = 2;
-	command->cmd = "ls";
-	command->argv[0] = "-a";
-	command->argv[1] = NULL;
-	*/
-
-	/*//Testing absolute path
-	command->argc = 2;
-	command->cmd = "/Users/guisset/Documents/NYU/Classes/OS/labs/nyuc/nyuc";
-	command->argv[0] = "something";
-	command->argv[1] = NULL;
-	*/
-
-	/*
-	// Testing current working directory (should PASS)
-	command->argc = 1;
-	command->cmd = "./nyuc";
-	command->argv[0] = NULL;
-	//command->argv[1] = NULL;
-	*/
-
-	// Testing current working directory (should not PASS)
-	command->argc = 1;
-	command->cmd = "nyuc";
-	command->argv[0] = NULL;
-	//command->argv[1] = NULL;
-	
-	run_command(command);
+	//run_command(command);
+	run_commands(commandList);
 }
 
 void test_built_in(){
+	char* input = "cd test"; // PASS
+	//char* input = "exit"; // PASS
 	command*command; // for cd
-	struct command* command_jobs;
-
-	//commandList *commandList;
-
-	/* Init cd */
-	command = malloc(sizeof(command));
-	command->argc = 2; 
-	//char * str1 = "a";
-	//char * str2 = "b";
-	command->argv[1] = "/str2";
-	command->argv[0] = "test";
-	command->cmd = "cd";
-
+	command = read_command_with_no_pipes2(input);
+	
 	char currdir[255];
 	char newdir[255];
 
-	/*Init jobs */
-	command_jobs = malloc(sizeof(command));
-	command_jobs->argc = 1; 
-	command_jobs->cmd = "exit"; 
-	if(is_built_in(command_jobs)){
-		printf("Executing %s command\n", command_jobs->cmd);
-		exec_built_in_command(command_jobs);
-		printf("Nothing should have happened here....\n");
-	}
+	
 	if(is_built_in(command)){
-		printf("Executing %s command with arguments %s\n", command->cmd, command->argv[0]);
+		printf("Executing %s command with arguments %s\n", command->cmd, command->argv[1]);
 		printf("Current directory: %s\n", getcwd(currdir, 255));
 		exec_built_in_command(command);
 		printf("New directory: %s\n", getcwd(newdir, 255));

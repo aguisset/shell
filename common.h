@@ -11,8 +11,10 @@ typedef struct command{
 	int argc; // number of argument including that command
 	int isOutput; // boolean set to 1 (true) if there is an output redirection
 	int isInput; // boolean set to 1 (true) if there is an input redirection
+	int isAppend; // boolean set to 1 (true) if there is >> for output redirection by appending to an existing file
 	char* input;
 	char* output;
+	char* append;
 	char* argv[ARGUMENTS]; // contains command + arguments terminated by NULL for convenience
 	char* cmd; // actual command like ls
 }command;

@@ -64,11 +64,11 @@ int main(int argc, char ** argv){
 	//read_command(line);
 	//testStruct();
 	//test_built_in();
-	//test_my_system();
+	test_my_system();
 	//testStruct();
  	//testRedirection();
  	//testInputOutputRedirection();
-	init_shell();
+	//init_shell();
 	return 0;
 }
 

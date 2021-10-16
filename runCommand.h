@@ -16,3 +16,5 @@ int run_command(command* command);
 //testing
 void test_built_in();
 void test_my_system();
+command* read_command_with_no_pipes2(char *line); // testing this TO DELETE IF NECESSARY
+commandList* read_command_with_pipes(char* line); // testing this TO DELETE IF NECESSARY
