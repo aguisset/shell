@@ -32,5 +32,6 @@ typedef struct commandList{
 #include<stdio.h>
 #include<string.h>
 #include<unistd.h>
+#include<ctype.h>
 
 int is_built_in(command *command);

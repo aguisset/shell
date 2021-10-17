@@ -10,6 +10,21 @@ So the first space determines what is a command from what is not.
 
 */
 
+char* trim(char* str){
+	/* This function trims leading and trailing whitespaces [9]*/
+	while(isspace(*str)) str++;
+	
+	if(*str == '\0') // we have reached the end of the string
+		return str;
+
+	// same from the end
+	char* end = str + strlen(str) - 1;
+	while(end > str && isspace(*end)) end--;
+
+	end[1] = '\0';
+	return str;
+}
+
 int hasOutputRedirection(char* input){
 	// returns true (1) if the string has an output redirection
 
@@ -161,7 +176,7 @@ commandList* read_command(char* line){
 	if(get_pipes_count(line) == 0){
 		//command*command = NULL;
 		//if(hasInputRedirection(line) || hasOutputRedirection(line)) command = read_command_with_redirections(line);
-		command*command = read_command_with_no_pipes2(line);
+		command*command = read_command_with_no_pipes(line);
 		commandList->command_count = 1; // we count blank command as one as well!
 		commandList->command_list[0] = command;
 	} 
@@ -172,7 +187,7 @@ commandList* read_command(char* line){
 	return commandList;
 }
 
-command* read_command_with_no_pipes2(char *line){
+command* read_command_with_no_pipes(char *line){
 	char buffer[BUFFER_SIZE];
 	strncpy(buffer, line, BUFFER_SIZE);
 	
@@ -182,7 +197,7 @@ command* read_command_with_no_pipes2(char *line){
 	int tokenNb = 0;
 	// loop through the string to extract all other tokens
 	while( token != NULL ) {
-	   printf( "Token: %s\n", token);
+	   //printf( "Token: %s\n", token); // for debug
 	   if(tokenNb == 0){
 	   	command->cmd = strdup(token);
 	   	command->argv[tokenNb++] = strdup(token);
@@ -217,6 +232,7 @@ command* read_command_with_no_pipes2(char *line){
 	}
 	command->argc = tokenNb;
 	
+	/*
 	// for debug
 	printf("Printing the argv\n");
 	for(int i = 0; i < tokenNb; i++){
@@ -226,101 +242,48 @@ command* read_command_with_no_pipes2(char *line){
 	printf("Printing the redirections\n");
 	if(command->isInput) printf("command->input = %s\n", command->input);
 	if(command->isOutput) printf("command->output = %s\n", command->output);
+	*/
 	// end of for debug
 	return command;
 }
 
-command* read_command_with_no_pipes(char* line){
-	//char buffer[BUFFER_SIZE]; // stdin
-	command* command;
-	char delimiter[] = " "; // delimiters to use
-	//char input__red_delim[] = " <";
-	//char output__red_delim[] = " >"; 
-
-	int current_token_index = 0;
-	int count = 0;
-	char *token = NULL;
-	command = malloc(sizeof(struct command));
-	if(command == NULL){
-		fprintf(stderr, "Error while allocating memory in read_command_with_no_pipes()\n");
-		exit(1);
-	}
-
-	//int token_count = command_count();
-	
-	command->cmd = token; // first part of split corresponds to the actual command (init to NULL)
-	printf("\t\t[rwp]: before loop token = %s\n", token); // for debug
-	printf("\t\t[rwp]: before loop current_token_index = %d\n", current_token_index); // for debug
-	
-	// getting arguments of command
-	while((token = strtok_r(line, delimiter, &line)) != NULL){
-		if(count == 0) command->cmd = token; // first part of split corresponds to the actual command
-		count++;
-		
-		command->argv[current_token_index] = token; 
-		
-		current_token_index++;
-	}
-	printf("\t\t[rwp]: current_token_index = %d\n", current_token_index);
-
-	command->argv[current_token_index] = token; // set last arguments to NULL for convenience
-	command->argc = count;
-
-	return command;
-}
-
-
 commandList* read_command_with_pipes(char* line){
-	commandList* commandList;
+	/*This command parse a command that contains pipe from the standard input */
+	char buffer[BUFFER_SIZE]; // local copy of the line from stdin
+	char* tokens[BUFFER_SIZE]; // will contains all the tokens
 	int command_count = get_command_count(line);
-	//printf("[rcp]: command count = %d\n", command_count);// for debug
-	char delimiter[] = "|\n"; // delimiters to use
-	int current_token_index = 0;
-	char *token = NULL;
-
-	// we use calloc to initialize directly here
-	commandList = calloc(sizeof(commandList) + command_count * sizeof(command*), sizeof(commandList));
-	
+	int pipe_count = get_pipes_count(line);
+	commandList* commandList = calloc(sizeof(struct commandList) + command_count*sizeof(command*), sizeof(commandList));
 	if(commandList == NULL){
 		fprintf(stderr, "Error when allocating command list in read_command_with_pipes()\n");
 		exit(1);
 	}
-	commandList->command_count = command_count;
 	
-	//int token_count = command_count();
-	//token = strtok(line, delimiter);
-	
+	strncpy(buffer, line, BUFFER_SIZE);
 
-	while ((token = strtok_r(line, delimiter, &line)) != NULL){
-		printf("[rcp]: token = %s\n", token);
-		commandList->command_list[current_token_index] = read_command_with_no_pipes2(token);
-		printf("\t[rcp]: commandList->command_list[%d]->argv[0] = %s\n", current_token_index, commandList->command_list[current_token_index]->argv[0]);
-		printf("\t[rcp]: commandList->command_list[%d]->argv[1] = %s\n", current_token_index, commandList->command_list[current_token_index]->argv[1]);
-		current_token_index++;
+	// Extract the first token
+	char * token = strtok(buffer, "|\n");
+	int tokenNb = 0;
+	// loop through the string to extract all other tokens
+	while( token != NULL ) {
+		token = trim(token);
+		//printf("token = %s\n", token); // for debug
+		tokens[tokenNb] = strdup(token);
+		token = strtok(NULL, "|");
+		tokenNb++;
 	}
 	
-	/*
-	do{
-		printf("[rcp]: token = %s\n", token);
-		commandList->command_list[current_token_index] = read_command_with_no_pipes(token);
-		current_token_index++;
-	}while((token = strtok(NULL, delimiter)) != NULL);
-	*/
-	/*
-	while((token = strtok(line, delimiter)) != NULL){
-		printf("[rcp]: token in loop = %s\n", token);
-		commandList->command_list[current_token_index] = read_command_with_no_pipes(token);
-		//tokens[current_token_index] = read_command_with_no_pipes(token); // make a copy of token
-		line = NULL;
-		current_token_index++;
-		printf("[rcp]: current_token_index = %d\n", current_token_index);
+	// init commandList
+	for(int i = 0; i < tokenNb; i++){
+		commandList->command_list[i] = read_command_with_no_pipes(tokens[i]);
 	}
-	printf("[rcp]: token = %s\n", token);
-	*/
-	commandList->command_list[current_token_index] = NULL; // set last command_list to null
+	commandList->command_list[tokenNb] = NULL; // for convenience
+	commandList->command_count = command_count;
+	commandList->pipe_count = pipe_count;
 
 	return commandList;
 }
+
 
 int get_pipes_count(char* line){
 	int count = 0;
@@ -419,7 +382,7 @@ void testRedirection(){
 
 void testInputOutputRedirection(){
 	char* input = "cat < input.txt >> output.txt\n";
-	command*command = read_command_with_no_pipes2(input);
+	command*command = read_command_with_no_pipes(input);
 
 	printf("command->isInput: %d\n", command->isInput);
 	printf("command->isOutput: %d\n", command->isOutput);
