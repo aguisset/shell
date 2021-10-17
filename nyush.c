@@ -84,4 +84,5 @@ Resources:
 [8] Handling redirections: https://stackoverflow.com/questions/11515399/implementing-shell-in-c-and-need-help-handling-input-output-redirection
 [9] How to trim leading and trailing whitespaces in C: https://stackoverflow.com/questions/122616/how-do-i-trim-leading-trailing-whitespace-in-a-standard-way
 [10] Implementation of multiple pipes in C: https://stackoverflow.com/questions/8389033/implementation-of-multiple-pipes-in-c
+[11] Coding multiple pipes in C: https://stackoverflow.com/questions/17630247/coding-multiple-pipe-in-c
 */

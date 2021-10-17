@@ -21,191 +21,44 @@ int count_arg(command*command){
 }
 
 
-int run_command(command* command){
-	/*Executing a command without replacing the current process requires to use create a new process
-	*/
-	if(command->cmd == NULL){
-		// blank line
-		return 0;
-	}
-	pid_t pid;
-	char binary_path[MAX_PATH_LENGTH];
-	char usr_binary_path[MAX_PATH_LENGTH];
-	char exec_path[MAX_PATH_LENGTH];
-	int state = 0; // will tell us if exit command has been called
-	int status;
-	int ARGUMENT_SIZE = command->argc;//should have my command + all arguments and one spot for null char
-	char *argv[ARGUMENT_SIZE+1]; // will contain all the arguments and NULL (See execv doc)
-	char *path = strdup(command->cmd);
-	int fd[2]; // file descriptors
-	
-	//memset(argv, '\0', sizeof(char*) * (ARGUMENT_SIZE+1));
-
-	strcpy(binary_path, BINARY_PATH);
-	strcpy(usr_binary_path, USR_BINARY_PATH);
-	strcpy(exec_path, EXEC_PATH);
-
-	argv[0] = strdup(command->cmd);
-	printf("Printing argv from 1: \n"); // for debug
-	// making a copy of element of struct command (if we don't want to make any changes to it)
-	for(int i = 1; i < ARGUMENT_SIZE; i++){
-		argv[i] = strdup(command->argv[i]);
-		printf("argv[%d] = %s\n", i, command->argv[i]); // for debug
-	}
-	argv[ARGUMENT_SIZE] = NULL;
-	printf("argv[ARGUMENT_SIZE+1]= %s\n", argv[ARGUMENT_SIZE]);
-	//printf("Last element of ARGV is %s\n", argv[ARGUMENT_SIZE]); // for debug
-
-	pid = fork();
-
-	switch(pid){
-		case 0:
-			// child process
-			/*Handling input/output redirection here*/
-			
-			if(command->isInput){ // see [8] Handling redirections
-				fd[0] = open(command->input, O_RDONLY);
-				fflush(stdin);
-				dup2(fd[0], STDIN_FILENO);
-				close(fd[0]);
-			}
-			
-			if(command->isOutput){ // see [8] Handling redirections
-				if((fd[1] = open(command->output , O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1){
-					fprintf(stderr, "Invalid file \n");
-					exit(1);
-				}
-				fflush(stdout);
-				dup2(fd[1], STDOUT_FILENO);
-				close(fd[1]);
-			}
-
-			if(command->isAppend){
-				if((fd[1] = open(command->append, O_WRONLY| O_APPEND)) == -1){
-					fprintf(stderr, "Invalid file \n");
-					exit(1);
-				}
-				fflush(stdout);
-				dup2(fd[1], STDOUT_FILENO);
-				close(fd[1]);
-			}
-
-			/*
-				...now the child has stdin coming from the input file, 
-				    ...stdout going to the output file, and no extra files open.
-				    ...it is safe to execute the command to be executed.
-			*/
-			if(path[0] == '.' && path[1] == '/'){
-				printf("Executable detected\n"); // for debug
-
-				
-				//printf("Binary path %s\n", binary_path); // for debug
-				//argv[0] = strdup(path);
-				//printf("argv[0] = %s\n", argv[0]); // for debug
-				//printf("pathh = %s\n", path); // for debug
-				printf("%s\n", command->cmd);
-				if(path[strlen(path)] == '\n') printf("something\n");
-				if(execv(path, argv) == -1){
-					fprintf(stderr, "Error: Invalid Program\n");
-					exit(1);
-				}
-			}
-			else if(!is_abs_path(path)){
-				// Relative path this is where you can find built in command
-				printf("Relative path\n"); // for debug
-
-				//Relative path must look in /bin first then /usr/bin/
-
-				strcat(binary_path, command->cmd);
-				printf("Binary path %s\n", binary_path); // for debug
-				argv[0] = strdup(binary_path);
-				//char* someArgs[] = {"/bin/ls", "-l", NULL}; // for debug
-				//execv("/bin/ls", someArgs); // for debug
-				for(int i = 0; i <= ARGUMENT_SIZE; i++)
-					printf("argv[%d]: %s\n", i, argv[i]);
-				
-				if(is_built_in(command)){
-					printf("[rc]: Built in command\n"); // for debug
-					state = exec_built_in_command(command);
-				}
-	 			else if(execv(binary_path, argv) == -1){
-	 				// will reach here only if there is an issue
-					printf("[rc]: Not a built in command\n"); // for debug
-					strcat(usr_binary_path, command->cmd);
-					printf("usr_binary path %s\n", usr_binary_path); // for debug
-					argv[0] = strdup(usr_binary_path);
-					printf("argv[0] = %s\n", argv[0]); // for debug
-					if(execv(usr_binary_path, argv) == -1){
-
-						fprintf(stderr, "Error: Invalid Program\n");
-						exit(1);
-					}
-				}
-			}
-			else if(is_abs_path(path)){
-				printf("Absolute path\n"); // for debug
-				// absolute path
-				argv[0] = strdup(path);
-				printf("path is: %s\n", path);
-				
-
-				if(execv(path, argv) == -1){
-					fprintf(stderr, "Error: Invalid Program\n");
-					exit(1);
-				}
-			}
-			else{
-				fprintf(stderr, "Error: Invalid Program\n");
-				exit(1);
-			}
-
-			break;
-		case -1:
-			fprintf(stderr, "Error while forking\n");
-			break;
-	}
-	
-	// back to parent
-	wait(NULL); // wait until the child process is done
-
-	return state;
-}
-
 int run_commands(commandList* commandList){
 	/* Wrapper function for executing a command */
 	/* executing multiple commands */
 	int pid[commandList->command_count];
+	int p[2]; // file descriptors for the 
+	int fd_in = 0;
+
 	for(int i = 0; i < commandList->command_count; i++){
-		pid[i] = run_command_with_pipes(commandList->command_list[i], commandList->command_count, i);
+		if(pipe(p) < 0){
+			fprintf(stderr, "Error creating pipe\n");
+			exit(1);
+		}
+		pid[i] = run_command_with_pipes(commandList->command_list[i], commandList->command_count, i, p, fd_in);
+
+		// back in parent
+		waitpid(pid[i], NULL, 0);
+		close(p[1]);
+		fd_in = p[0]; // save for the next command if any
 	}
-			
+	
+	/*		
 	// clear zombies
 	for(int i = 0; i < commandList->command_count; i++){
 		waitpid(pid[i], NULL, 0);
 	}
-
+	*/
+	// closing pipes
+	close(p[0]);
+	close(p[1]);
 	return 0;
 }
 
 
-int run_command_with_pipes(command* command, int command_count, int command_index){
+int run_command_with_pipes(command* command, int command_count, int command_index, int p[2], int fd_in){
 	/*@param hasPipe is the number of commands, if it is greater than 0 then the command has pipes.
 	*/
 
 	printf("----- ENTERING RUN COMMAND WITH PIPES for %s -----\n", command->cmd); // for debug
-	int nbPipe = command_count-1; // all the pipes that needs to be created + 1 for the launcher process
-	int pipes[nbPipe][2]; // file descriptors where 0 is for reading and 1 is for writing.
-
-	// opening pipes
-	if(command_count > 1){
-		// parent creating all pipes at the start
-		for(int i = 0; i < nbPipe; i++){
-			if(pipe(pipes[i]) < 0){
-				fprintf(stderr, "Error: Pipe has not been created\n");
-				exit(1);
-			}
-		}
-	}
 		
 	pid_t pid;
 	char binary_path[MAX_PATH_LENGTH];
@@ -231,76 +84,56 @@ int run_command_with_pipes(command* command, int command_count, int command_inde
 	
 	pid = fork();
 	switch(pid){
-		case 0:
-			// child process
+		case 0: // child process
+			
 			if(command_count > 1){
-				// multiple commands that requires pipes
+				// multiple commands that requires pipes see [11]
 				printf("There are multiple commands %s\n", command->cmd); // for debug
-				
-				// closing unused pipes for current child process
 				
 				// redirecting stdin and stdout [10]
 
+				// change the input according to the old one
+				if(dup2(fd_in, STDIN_FILENO) < 0){
+					fprintf(stderr, "Error: Creation of pipe failed\n");
+					exit(1);
+				} 
+		        
+				if(command_index != command_count -1){
+					// not last command
+					printf("Command %s with command_index= %d\n", command->cmd, command_index); // for debug
+					
+					if(dup2(p[1], STDOUT_FILENO) < 0){
+						fprintf(stderr, "Error: Creation of pipe failed 2\n");
+					}
+					
+				}
+
+				// closing unused pipe
+				close(p[0]);
 				
-				if(command_index == 0){
-					// first command (stdin -> command1 -> pipe0)
-					printf("Command %s with command_index= %d\n", command->cmd, command_index);
-					if(dup2(pipes[command_index][1], STDOUT_FILENO) < 0){
-						fprintf(stderr, "Error: Redirecting standard output failed\n");
-						exit(1);
-					}
-					close(pipes[command_index][0]);
-					close(pipes[command_index][1]);
-				}
-				else if(command_index == command_count-1){
-					// last command (previousPipe -> lastCommand -> stdout)
-					printf("Command %s with command_index= %d\n", command->cmd, command_index);
-					if(dup2(pipes[command_index-1][0], STDIN_FILENO) < 0){
-						fprintf(stderr, "Error: Redirecting standard input failed 1\n");
-						exit(1);
-					}
-
-					close(pipes[command_index-1][0]);
-					close(pipes[command_index-1][1]);
-				}
-				else{
-					// not first nor last command (previousPipe -> currentCommand -> nextPipe)
-					if(dup2(pipes[command_index-1][0], STDIN_FILENO) < 0){
-						fprintf(stderr, "Error: Redirecting standard input failed 2\n");
-						exit(1);
-					}
-
-					if(dup2(pipes[command_index+1][1], STDOUT_FILENO) < 0){
-						fprintf(stderr, "Error: Redirecting standard output failed\n");
-						exit(1);
-					}
-
-					close(pipes[command_index-1][0]);
-					close(pipes[command_index-1][1]);
-					close(pipes[command_index+1][0]);
-					close(pipes[command_index+1][0]);
-				}
-
+		        
 			}
 			/*Handling input/output redirection here*/
 			if(command->isInput){ // see [8] Handling redirections
+				printf("There are some input redirections\n"); // for debug
 				fd[0] = open(command->input, O_RDONLY);
 				fflush(stdin);
 				if(dup2(fd[0], STDIN_FILENO) < 0){
-					fprintf(stderr, "Error: Redirecting standard output failed");
+					fprintf(stderr, "Error: Redirecting standard input failed\n");
 					exit(1);
 				}
 				close(fd[0]);
 			}
 			
 			if(command->isOutput){ // see [8] Handling redirections
+				printf("There are some input redirections to %s\n", command->output); // for debug
 				if((fd[1] = open(command->output , O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1){
-					fprintf(stderr, "Invalid file \n");
+					fprintf(stderr, "Invalid file\n");
 					exit(1);
 				}
 				fflush(stdout);
 				if(dup2(fd[1], STDOUT_FILENO) < 0){
-					fprintf(stderr, "Error: Redirecting standard output failed");
+					fprintf(stderr, "Error: Redirecting standard output failed\n");
 					exit(1);
 				}
 				close(fd[1]);
@@ -308,12 +141,12 @@ int run_command_with_pipes(command* command, int command_count, int command_inde
 
 			if(command->isAppend){
 				if((fd[1] = open(command->append, O_WRONLY| O_APPEND)) == -1){
-					fprintf(stderr, "Invalid file \n");
+					fprintf(stderr, "Invalid file\n");
 					exit(1);
 				}
 				fflush(stdout);
 				if(dup2(fd[1], STDOUT_FILENO) < 0){
-					fprintf(stderr, "Error: Redirecting standard output failed");
+					fprintf(stderr, "Error: Redirecting standard output failed\n");
 					exit(1);
 				}
 				close(fd[1]);
@@ -390,18 +223,6 @@ int run_command_with_pipes(command* command, int command_count, int command_inde
 			break;
 	}
 	
-	// waiting
-	//waitpid(pid, NULL, 0);
-
-	// closing pipes
-	if(command_count > 1){
-		// parent created all pipes at the start, they have to be closed
-		for(int i = 0; i < nbPipe; i++){
-			close(pipes[i][0]);
-			close(pipes[i][1]);
-		}
-	}
-
 	return pid;
 }
 
@@ -468,18 +289,22 @@ void test_my_system(){
 	
 	command*command;
 	commandList* commandList;
-	char* input = "ls -l"; // PASS
+	//char* input = "ls -l"; // PASS
+	//char* input = "ps | grep nyush | wc"; // PASS
 	//char* input = "cat > output.txt\n"; // PASS
+	//char* input = "cat < output.txt\n"; // PASS
 	//char* input = "./nyuc\n"; // PASS (needed to change the delimiter in strtok from " " to " \n")
 	//char* input = "./nyuc"; // PASS
 	//char* input = "./nyuc Abdoul"; // PASS
 	//char* input = "/Users/guisset/Documents/NYU/Classes/OS/labs/nyush/nyuc\n"; // PASS
 	//char* input = "/Users/guisset/Documents/NYU/Classes/OS/labs/nyush/nyuc"; // PASS
-	//char* inputWithPipes = "cat | cat"; // Each is executed without redirecting FAILED
+	//char* input = "cat | cat"; // Each is executed without redirecting FAILED
 	//char* test = "ls -l";
-	char* inputWithPipes = "ls -l | grep Makefile";
+	//char* input = "ls -l | grep Makefile"; // PASS
+	//char* input = "du | sort | head"; // PASS (but only the first 2 lines)
+	char* input = "ls -l| grep Makefile | wc"; // PASS
 	//command = read_command_with_no_pipes(input);
-	commandList = read_command(inputWithPipes);
+	commandList = read_command(input);
 
 
 	// for debug 
@@ -487,8 +312,12 @@ void test_my_system(){
 		for(int j = 0; j < commandList->command_list[i]->argc; j++){
 
 			printf("commandList->command_list[%d]->argv[%d] = %s\n", i, j, commandList->command_list[i]->argv[j]);
+
 		}
+		if(commandList->command_list[i]->isOutput) printf("Output: %s\n", commandList->command_list[i]->output);
+		if(commandList->command_list[i]->isInput) printf("Output: %s\n", commandList->command_list[i]->input);
 	}
+
 	//end for debug */ 
 
 	//run_command(commandList->command_list[0]);

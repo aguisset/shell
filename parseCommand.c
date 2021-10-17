@@ -197,7 +197,7 @@ command* read_command_with_no_pipes(char *line){
 	int tokenNb = 0;
 	// loop through the string to extract all other tokens
 	while( token != NULL ) {
-	   //printf( "Token: %s\n", token); // for debug
+	   printf( "Token: %s\n", token); // for debug
 	   if(tokenNb == 0){
 	   	command->cmd = strdup(token);
 	   	command->argv[tokenNb++] = strdup(token);
@@ -205,16 +205,19 @@ command* read_command_with_no_pipes(char *line){
 	   	continue;
 	   }
 	   if(!strcmp(token,"<")){
+	   		printf( "< spotted\n"); // for debug
 			token = strtok(NULL, " ");
 			command->isInput = 1;
 			continue;
 		}
 		else if(!strcmp(token, ">")){
+			printf( "> spotted\n"); // for debug
 			token = strtok(NULL, " ");
 			command->isOutput = 1;
 			continue;
 		}
 		else if(!strcmp(token, ">>")){
+			printf( ">> spotted\n"); // for debug
 			token = strtok(NULL, " ");
 			command->isAppend = 1;
 			continue;
@@ -222,9 +225,9 @@ command* read_command_with_no_pipes(char *line){
 	   if(!command->isInput && !command->isOutput) command->argv[tokenNb++] = strdup(token);
 	   
 	   // in case of redirection the next token is the file we are looking for
-	   if(command->isInput) command->input = token;
-	   if(command->isOutput) command->output = token;
-	   if(command->isAppend) command->append = token;
+	   if(command->isInput) command->input = strdup(token);
+	   if(command->isOutput) command->output = strdup(token);
+	   if(command->isAppend) command->append = strdup(token);
 
 	   //printf( "argv: %s\n", command->argv[tokenNb]); //printing each token for debug
 	   //tokenNb++;
@@ -252,7 +255,7 @@ commandList* read_command_with_pipes(char* line){
 	char buffer[BUFFER_SIZE]; // local copy of the line from stdin
 	char* tokens[BUFFER_SIZE]; // will contains all the tokens
 	int command_count = get_command_count(line);
-	int pipe_count = get_pipes_count(line);
+	
 	commandList* commandList = calloc(sizeof(struct commandList) + command_count*sizeof(command*), sizeof(commandList));
 	if(commandList == NULL){
 		fprintf(stderr, "Error when allocating command list in read_command_with_pipes()\n");
@@ -279,7 +282,6 @@ commandList* read_command_with_pipes(char* line){
 	}
 	commandList->command_list[tokenNb] = NULL; // for convenience
 	commandList->command_count = command_count;
-	commandList->pipe_count = pipe_count;
 
 	return commandList;
 }

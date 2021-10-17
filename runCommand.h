@@ -11,7 +11,7 @@ int exec_built_in_command(command * command);
 int exec_cd(char* path);
 int run_commands(commandList* commandList);
 int run_command(command* command);
-int run_command_with_pipes(command* command, int command_count, int command_index);
+int run_command_with_pipes(command* command, int command_count, int command_index, int* pipe, int fd_in);
 int pipe_redirect(int* fd, int redirect_type);
 
 //testing
