@@ -16,14 +16,3 @@ int get_pipes_count(char* line);
 int get_command_count(char* input);
 commandList* read_command(char* line);
 commandList* init_commandList_struct(char* line);
-
-/** for testing **/
-void testInputOutputRedirection();
-
-
-
-
-// for test
-void testStruct();
-void testInitStructure(commandList* commandList);
-void testRedirection();
