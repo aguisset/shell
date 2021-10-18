@@ -2,6 +2,7 @@
 #include "parseCommand.h"
 #include "runCommand.h"
 
+
 static void signal_handler(int signo){
 	
 	switch(signo){
@@ -16,18 +17,13 @@ static void signal_handler(int signo){
 			break;
 		case SIGTSTP:
 			// CLTR-Z
-			
-			break;
-		case EXIT:
-			printf("No other job, terminating the shell....\n");
-			kill(getppid(), SIGTERM);
 			break;
 		default:
 			//other jobs not handled
 			break;
 	}
 }
-void init_shell(){
+int init_shell(){
 	int status = 0;
 
 	// Signal handling
@@ -35,11 +31,11 @@ void init_shell(){
 	signal(SIGTERM, signal_handler);
 	signal(SIGTSTP, signal_handler);
 	signal(SIGQUIT, signal_handler);
+
+	commandList* commandList;
 	while(!status){
 		char* base_dir;
 		char* line;
-		commandList* commandList;
-		
 		base_dir = get_base_dir();
 		printf("[nyush %s]$ _", base_dir);
 		line = get_line_from_stdin();
@@ -47,29 +43,18 @@ void init_shell(){
 		//fflush() // remember to flush stdout
 		commandList = init_commandList_struct(line);
 		status = run_commands(commandList); // this has a segfault if ^C or blank line (FIXED in run_command)
-		
-		// handle zombies
-
-
-		printf("Status = %d\n", status);
-		
-		//testInitStructure(commandList); // at this stage we know our structre has been created properly
 	}
 	
-	//kill(getppid(), SIGTERM);
-	return;
+	// freeing
+	for(int i = 0; i < commandList->command_count; i++){
+		free(commandList->command_list[i]);
+	}
+	free(commandList);
+	return status;
 }
 int main(int argc, char ** argv){
-	//char *line = get_line_from_stdin();
-	//read_command(line);
-	//testStruct();
-	//test_built_in();
-	test_my_system();
-	//testStruct();
- 	//testRedirection();
- 	//testInputOutputRedirection();
-	//init_shell();
-	return 0;
+	shell_pid = getpid();
+	return init_shell();
 }
 
 /*
@@ -85,4 +70,5 @@ Resources:
 [9] How to trim leading and trailing whitespaces in C: https://stackoverflow.com/questions/122616/how-do-i-trim-leading-trailing-whitespace-in-a-standard-way
 [10] Implementation of multiple pipes in C: https://stackoverflow.com/questions/8389033/implementation-of-multiple-pipes-in-c
 [11] Coding multiple pipes in C: https://stackoverflow.com/questions/17630247/coding-multiple-pipe-in-c
+[12] How to correctly stop child process: https://stackoverflow.com/questions/66377870/how-to-correctly-send-sigtstp-signal-to-a-child-process
 */

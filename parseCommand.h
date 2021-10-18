@@ -6,24 +6,22 @@
 #include<string.h>
 #include<unistd.h>
 
-
-
-commandList* init_commandList_struct(char* line);
-//int hasPipe(char* line);
-int get_pipes_count(char* line);
+int is_built_in(command *command);
 char* get_base_dir();
-
-
 char *get_line_from_stdin();
-commandList* read_command(char* line);
-command* read_command_with_no_pipes(char* line);
+char* trim(char* str);
 commandList* read_command_with_pipes(char* line);
-int hasOutputRedirection(char* input);
-int hasInputRedirection(char* input);
+command* read_command_with_no_pipes(char* line);
+int get_pipes_count(char* line);
+int get_command_count(char* input);
+commandList* read_command(char* line);
+commandList* init_commandList_struct(char* line);
+
+/** for testing **/
 void testInputOutputRedirection();
 
-void free_arrays_of_pointers(char **arr, size_t size);
-int get_command_count(char* input);
+
+
 
 // for test
 void testStruct();
