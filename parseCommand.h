@@ -11,7 +11,7 @@
 commandList* init_commandList_struct(char* line);
 //int hasPipe(char* line);
 int get_pipes_count(char* line);
-char* get_base_dir();
+
 
 
 char *get_line_from_stdin();

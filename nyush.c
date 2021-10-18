@@ -2,21 +2,20 @@
 #include "parseCommand.h"
 #include "runCommand.h"
 
+
 static void signal_handler(int signo){
-	
+	int status;
 	switch(signo){
 		case SIGINT:
 			//CLTR-C
 			break;
 		case SIGQUIT:
-			
 			break;
 		case SIGTERM:
-			
 			break;
 		case SIGTSTP:
 			// CLTR-Z
-			
+			printf("Oups sigtsp\n");
 			break;
 		case EXIT:
 			printf("No other job, terminating the shell....\n");
@@ -31,10 +30,10 @@ void init_shell(){
 	int status = 0;
 
 	// Signal handling
-	signal(SIGINT, signal_handler);
-	signal(SIGTERM, signal_handler);
-	signal(SIGTSTP, signal_handler);
-	signal(SIGQUIT, signal_handler);
+	signal(SIGINT, &signal_handler);
+	signal(SIGTERM, &signal_handler);
+	signal(SIGTSTP, &signal_handler);
+	signal(SIGQUIT, &signal_handler);
 	while(!status){
 		char* base_dir;
 		char* line;
@@ -64,11 +63,11 @@ int main(int argc, char ** argv){
 	//read_command(line);
 	//testStruct();
 	//test_built_in();
-	test_my_system();
+	//test_my_system();
 	//testStruct();
  	//testRedirection();
  	//testInputOutputRedirection();
-	//init_shell();
+	init_shell();
 	return 0;
 }
 

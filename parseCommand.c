@@ -173,6 +173,10 @@ commandList* read_command(char* line){
 	int command_count = get_command_count(line);
 
 	commandList* commandList = calloc(sizeof(struct commandList) + command_count * sizeof(struct command*), sizeof(struct commandList));
+	if(commandList == NULL){
+		fprintf(stderr, "Error: Allocating memory\n");
+		exit(1);
+	}
 	if(get_pipes_count(line) == 0){
 		//command*command = NULL;
 		//if(hasInputRedirection(line) || hasOutputRedirection(line)) command = read_command_with_redirections(line);
@@ -234,6 +238,7 @@ command* read_command_with_no_pipes(char *line){
 	   token = strtok(NULL, " ");
 	}
 	command->argc = tokenNb;
+	command->input_command = strdup(line);
 	
 	/*
 	// for debug

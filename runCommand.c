@@ -3,6 +3,9 @@
 #define USR_BINARY_PATH "/usr/bin/"
 #define EXEC_PATH "./"
 
+int job_count = 0; // global variable that will be incremented everytime a job is stopped
+struct jobs* jobs;
+char* current_command = NULL;
 
 int is_abs_path(char * path){
 	// Returns 1 if it's an absolute path 0 if it is relative
@@ -10,41 +13,57 @@ int is_abs_path(char * path){
 	return path[0] == '/' ? 1 : 0;
 }
 
-int count_arg(command*command){
-	/* After last argument there is a NULL character in argv  */
-	int count = 0;
-	int i = 0;
-	while(command->argv[i++] != NULL)
-		count++;
+static void child_sig_handler(int signo){
+	switch(signo){
+		case SIGTSTP:
+			printf("Handling SIGTSTP: command = [%s] and job_count = %d\n", current_command, job_count);// for debug
+			jobs->job_list[job_count]->id = job_count+1;
+			if(current_command != NULL){ 
+				printf("Current_command has been assigned properly\n");
+				jobs->job_list[job_count]->command = strdup(current_command);
+			}
+			job_count++;
+			printf("Handled SIGTSTP and now job_count = %d\n", job_count);// for debug
 
-	return count;
+			break;
+
+	}
+
+	return;
 }
-
-
 int run_commands(commandList* commandList){
 	/* Wrapper function for executing a command */
 	/* executing multiple commands */
-	int pid[commandList->command_count];
+	pid_t pid[commandList->command_count];
 	int p[2]; // file descriptors for the 
 	int fd_in = 0;
+	int status;
+	// checking global variable allocation
+	jobs = calloc(sizeof(struct jobs) + MAX_JOBS*sizeof(struct job*), sizeof(struct jobs));
+	if(jobs== NULL){
+		fprintf(stderr, "Error: Allocating memory\n");
+		exit(1);
+	}
+
 
 	for(int i = 0; i < commandList->command_count; i++){
 		if(pipe(p) < 0){
 			fprintf(stderr, "Error creating pipe\n");
 			exit(1);
 		}
-		pid[i] = run_command_with_pipes(commandList->command_list[i], commandList->command_count, i, p, fd_in);
+		pid[i] = run_command_with_pipes(commandList->command_list[i], jobs, commandList->command_count, i, p, fd_in);
 
 		// back in parent
-		waitpid(pid[i], NULL, 0);
+		
 		close(p[1]);
 		fd_in = p[0]; // save for the next command if any
+
 	}
 	
-	/*		
+	/*
 	// clear zombies
 	for(int i = 0; i < commandList->command_count; i++){
-		waitpid(pid[i], NULL, 0);
+		waitpid(pid[i], &status, WNOHANG);
 	}
 	*/
 	// closing pipes
@@ -54,38 +73,21 @@ int run_commands(commandList* commandList){
 }
 
 
-int run_command_with_pipes(command* command, int command_count, int command_index, int p[2], int fd_in){
-	/*@param hasPipe is the number of commands, if it is greater than 0 then the command has pipes.
-	*/
+int run_command_with_pipes(command* command, struct jobs* jobs, int command_count, int command_index, int p[2], int fd_in){
 
 	printf("----- ENTERING RUN COMMAND WITH PIPES for %s -----\n", command->cmd); // for debug
 		
 	pid_t pid;
-	char binary_path[MAX_PATH_LENGTH];
-	char usr_binary_path[MAX_PATH_LENGTH];
-	char exec_path[MAX_PATH_LENGTH];
-	int state;
-	int ARGUMENT_SIZE = command->argc;//should have my command + all arguments and one spot for null char
-	char *argv[ARGUMENT_SIZE+1]; // will contain all the arguments and NULL (See execv doc)
-	char *path = strdup(command->cmd);
 	int fd[2];
-	// keep local mutable copy of path to use
-	strcpy(binary_path, BINARY_PATH);
-	strcpy(usr_binary_path, USR_BINARY_PATH);
-	strcpy(exec_path, EXEC_PATH);
+	current_command = command->input_command;// update global variable command
 
-	argv[0] = strdup(command->cmd);
-	
-	// making a copy of element of struct command (if we don't want to make any changes to it)
-	for(int i = 1; i < ARGUMENT_SIZE; i++){
-		argv[i] = strdup(command->argv[i]);
-	}
-	argv[ARGUMENT_SIZE] = NULL;
-	
 	pid = fork();
 	switch(pid){
 		case 0: // child process
-			
+			// handling signals before execution
+			signal (SIGTSTP, SIG_DFL); // revert to previous prehavior
+			//signal(SIGTSTP, &child_sig_handler);
+
 			if(command_count > 1){
 				// multiple commands that requires pipes see [11]
 				printf("There are multiple commands %s\n", command->cmd); // for debug
@@ -107,12 +109,10 @@ int run_command_with_pipes(command* command, int command_count, int command_inde
 					}
 					
 				}
-
 				// closing unused pipe
 				close(p[0]);
-				
-		        
 			}
+
 			/*Handling input/output redirection here*/
 			if(command->isInput){ // see [8] Handling redirections
 				printf("There are some input redirections\n"); // for debug
@@ -154,68 +154,11 @@ int run_command_with_pipes(command* command, int command_count, int command_inde
 
 			/*
 				...now the child has stdin coming from the input file, 
-				    ...stdout going to the output file, and no extra files open.
-				    ...it is safe to execute the command to be executed.
+				...stdout going to the output file, and no extra files open.
+				...it is safe to execute the command to be executed.
 			*/
-			if(path[0] == '.' && path[1] == '/'){
-				printf("Executable detected\n"); // for debug
-
-				if(execv(path, argv) == -1){
-					fprintf(stderr, "Error: Invalid Program\n");
-					exit(1);
-				}
-			}
-			else if(!is_abs_path(path)){
-				// Relative path this is where you can find built in command
-				printf("Relative path %s\n", command->cmd); // for debug
-
-
-				strcat(binary_path, command->cmd);
-				argv[0] = strdup(binary_path);
-				//char* someArgs[] = {"/bin/ls", "-l", NULL}; // for debug
-				//execv("/bin/ls", someArgs); // for debug
-				for(int i = 0; i <= ARGUMENT_SIZE; i++)
-					printf("argv[%d]: %s\n", i, argv[i]);
-				
-				if(is_built_in(command)){
-					printf("[rc]: Built in command\n"); // for debug
-					state = exec_built_in_command(command);
-				}
-	 			else if(execv(binary_path, argv) == -1){
-	 				// will reach here only if there is an issue
-					printf("[rc]: Not a built in command\n"); // for debug
-					strcat(usr_binary_path, command->cmd);
-					printf("usr_binary path %s\n", usr_binary_path); // for debug
-					argv[0] = strdup(usr_binary_path);
-
-					// for debug
-					for(int i = 0; i <= ARGUMENT_SIZE; i++)
-						printf("argv[%d]: %s\n", i, argv[i]);
-					// end for debug
-					printf("argv[0] = %s\n", argv[0]); // for debug
-					if(execv(usr_binary_path, argv) == -1){
-
-						fprintf(stderr, "Error: Invalid Program\n");
-						exit(1);
-					}
-				}
-			}
-			else if(is_abs_path(path)){
-				printf("Absolute path\n"); // for debug
-				// absolute path
-				argv[0] = strdup(path);
-				printf("path is: %s\n", path);
-				
-
-				if(execv(path, argv) == -1){
-					fprintf(stderr, "Error: Invalid Program\n");
-					exit(1);
-				}
-			}
-			else{
-				fprintf(stderr, "Error: Invalid Program\n");
-				exit(1);
-			}
+			
+			exec_command(command);
 
 			break;
 		case -1:
@@ -223,9 +166,108 @@ int run_command_with_pipes(command* command, int command_count, int command_inde
 			break;
 	}
 	
+	//waitpid(pid, NULL, WNOHANG);
+	int status;
+	waitpid(pid, &status, WNOHANG);
+	if (WIFEXITED(status)) {
+	    // child process terminated normally
+	    printf("Child process terminated normally\n");
+	} else if (WIFSIGNALED(status)) {
+	    //child process terminated by a signal
+	    printf("Child process terminated by a signal\n");
+
+	} else if (WIFSTOPPED(status)) {
+		// child process was stopped not terminated
+		printf("Child process was stopped not terminated\n");
+		printf("[nyush %s]$ _", get_base_dir());
+		fflush(stdout);
+	}
+
 	return pid;
 }
 
+void exec_command(command* command){
+	char binary_path[MAX_PATH_LENGTH];
+	char usr_binary_path[MAX_PATH_LENGTH];
+	char exec_path[MAX_PATH_LENGTH];
+
+	int ARGUMENT_SIZE = command->argc;//should have my command + all arguments and one spot for null char
+	char *argv[ARGUMENT_SIZE+1]; // will contain all the arguments and NULL (See execv doc)
+	char *path = strdup(command->cmd);
+	int state;
+	argv[0] = strdup(command->cmd);
+	
+	// making a copy of element of struct command (if we don't want to make any changes to it)
+	for(int i = 1; i < ARGUMENT_SIZE; i++){
+		argv[i] = strdup(command->argv[i]);
+	}
+	argv[ARGUMENT_SIZE] = NULL;
+	
+	// keep local mutable copy of path to use
+	strcpy(binary_path, BINARY_PATH);
+	strcpy(usr_binary_path, USR_BINARY_PATH);
+	strcpy(exec_path, EXEC_PATH);
+
+
+	if(path[0] == '.' && path[1] == '/'){
+		printf("Executable detected\n"); // for debug
+		if(execv(path, argv) == -1){
+			fprintf(stderr, "Error: Invalid Program\n");
+			exit(1);
+		}
+	}
+	else if(!is_abs_path(path)){
+		// Relative path this is where you can find built in command
+		printf("Relative path %s\n", command->cmd); // for debug
+
+		strcat(binary_path, command->cmd);
+		argv[0] = strdup(binary_path);
+		//char* someArgs[] = {"/bin/ls", "-l", NULL}; // for debug
+		//execv("/bin/ls", someArgs); // for debug
+		for(int i = 0; i <= ARGUMENT_SIZE; i++)
+			printf("argv[%d]: %s\n", i, argv[i]);
+				
+		if(is_built_in(command)){
+			printf("[rc]: Built in command\n"); // for debug
+			state = exec_built_in_command(command);
+		}
+	 	else if(execv(binary_path, argv) == -1){
+	 		// will reach here only if there is an issue
+			printf("[rc]: Not a built in command\n"); // for debug
+			strcat(usr_binary_path, command->cmd);
+			printf("usr_binary path %s\n", usr_binary_path); // for debug
+			argv[0] = strdup(usr_binary_path);
+
+			// for debug
+			for(int i = 0; i <= ARGUMENT_SIZE; i++)
+				printf("argv[%d]: %s\n", i, argv[i]);
+				
+			// end for debug
+			printf("argv[0] = %s\n", argv[0]); // for debug
+			if(execv(usr_binary_path, argv) == -1){
+
+				fprintf(stderr, "Error: Invalid Program\n");
+				exit(1);
+			}
+		}
+	}
+	else if(is_abs_path(path)){
+		printf("Absolute path\n"); // for debug
+		// absolute path
+		argv[0] = strdup(path);
+		printf("path is: %s\n", path);
+
+		if(execv(path, argv) == -1){
+			fprintf(stderr, "Error: Invalid Program\n");
+			exit(1);
+		}
+	}
+	else{
+		fprintf(stderr, "Error: Invalid Program\n");
+		exit(1);
+	}
+
+}
 
 int exec_built_in_command(command * command){
 	printf("[exBuiltIn]: Executing built in command\n"); // for debug
@@ -289,6 +331,7 @@ void test_my_system(){
 	
 	command*command;
 	commandList* commandList;
+	char* input = "cat"; // to test jobs
 	//char* input = "ls -l"; // PASS
 	//char* input = "ps | grep nyush | wc"; // PASS
 	//char* input = "cat > output.txt\n"; // PASS
@@ -302,7 +345,7 @@ void test_my_system(){
 	//char* test = "ls -l";
 	//char* input = "ls -l | grep Makefile"; // PASS
 	//char* input = "du | sort | head"; // PASS (but only the first 2 lines)
-	char* input = "ls -l| grep Makefile | wc"; // PASS
+	//char* input = "ls -l| grep Makefile | wc"; // PASS
 	//command = read_command_with_no_pipes(input);
 	commandList = read_command(input);
 

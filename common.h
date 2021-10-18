@@ -6,6 +6,8 @@
 #define STDIN stdin
 #define ARGUMENTS 1000
 #define MAX_PATH_LENGTH 1000
+#define MAX_JOBS 100
+
 // Structure that contains the parsed command
 typedef struct command{ 
 	int argc; // number of argument including that command
@@ -17,6 +19,7 @@ typedef struct command{
 	char* append;
 	char* argv[ARGUMENTS]; // contains command + arguments terminated by NULL for convenience
 	char* cmd; // actual command like ls
+	char* input_command; // command retrieved from stdin
 }command;
 
 typedef struct commandList{
@@ -24,6 +27,16 @@ typedef struct commandList{
 	int command_count;
 	command* command_list[];
 }commandList;
+
+
+struct job{
+	int id; // unique id that will be used to display jobs in order
+	char* command; // command used
+};
+
+struct jobs{
+	struct job* job_list[MAX_JOBS]; // no more than a 100 jobs
+};
 
 
 #endif
@@ -35,3 +48,4 @@ typedef struct commandList{
 #include<ctype.h>
 
 int is_built_in(command *command);
+char* get_base_dir();
